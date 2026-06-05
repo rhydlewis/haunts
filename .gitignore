@@ -1,0 +1,22 @@
+# macOS
+.DS_Store
+
+# Swift / SwiftPM
+.build/
+.swiftpm/
+Package.resolved
+
+# Xcode (for when this becomes an .app project)
+xcuserdata/
+*.xcuserstate
+DerivedData/
+
+# Scratch
+/tmp/
+*.log
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+.beads/proxieddb/

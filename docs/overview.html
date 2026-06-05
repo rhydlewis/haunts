@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>z for Finder — The Warm Navigator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d0b0a; --bg2:#161109; --panel:rgba(255,255,255,.028);
+  --ink:#f4ece2; --muted:#9c9085; --faint:#6a6058;
+  --ember:#ff8a3d; --ember2:#ffc26a; --ember-soft:rgba(255,138,61,.14);
+  --repo:#5fd6c2; --trans:#e0645c; --dir:#c8b9a6;
+  --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.04);
+  --serif:"Fraunces",Georgia,serif; --sans:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg); color:var(--ink); font-family:var(--sans); font-weight:300;
+  line-height:1.6; overflow-x:hidden; -webkit-font-smoothing:antialiased;
+}
+/* warm atmosphere */
+body::before{
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(900px 600px at 70% -5%, rgba(255,138,61,.16), transparent 60%),
+    radial-gradient(700px 500px at 12% 8%, rgba(255,194,106,.07), transparent 55%),
+    radial-gradient(1000px 800px at 50% 110%, rgba(95,214,194,.05), transparent 60%);
+}
+body::after{ /* grain */
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none; opacity:.45;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
+  mix-blend-mode:overlay;
+}
+.wrap{position:relative; z-index:1; max-width:1080px; margin:0 auto; padding:0 28px}
+::selection{background:var(--ember); color:#1a0e05}
+
+/* ---------- nav ---------- */
+nav{
+  position:sticky; top:0; z-index:50; backdrop-filter:blur(14px);
+  background:linear-gradient(to bottom,rgba(13,11,10,.82),rgba(13,11,10,.4));
+  border-bottom:1px solid var(--line2);
+}
+nav .wrap{display:flex; align-items:center; gap:8px; height:60px}
+nav .brand{font-family:var(--mono); font-weight:600; letter-spacing:-.02em; font-size:15px; margin-right:auto; display:flex; align-items:center; gap:10px}
+nav .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--ember);box-shadow:0 0 14px var(--ember)}
+nav a{color:var(--muted); text-decoration:none; font-size:13px; font-family:var(--mono); padding:7px 12px; border-radius:7px; transition:.2s}
+nav a:hover{color:var(--ink); background:var(--panel)}
+@media(max-width:720px){nav a.hideable{display:none}}
+
+/* ---------- hero ---------- */
+header{padding:88px 0 64px}
+.eyebrow{font-family:var(--mono); font-size:12.5px; letter-spacing:.32em; text-transform:uppercase; color:var(--ember); margin-bottom:26px}
+h1{font-family:var(--serif); font-weight:340; font-size:clamp(46px,8.5vw,92px); line-height:.96; letter-spacing:-.025em; margin-bottom:8px}
+h1 em{font-style:italic; color:var(--ember2)}
+.lede{font-family:var(--serif); font-style:italic; font-weight:300; font-size:clamp(19px,2.5vw,25px); color:var(--muted); max-width:640px; margin:24px 0 0; line-height:1.45}
+.lede b{font-style:normal; font-weight:500; color:var(--ink)}
+
+/* palette mock */
+.palette{
+  margin:54px 0 0; border:1px solid var(--line); border-radius:16px; overflow:hidden;
+  background:linear-gradient(180deg,rgba(28,22,16,.9),rgba(16,13,11,.92));
+  box-shadow:0 40px 90px -40px rgba(0,0,0,.8), 0 0 0 1px rgba(255,138,61,.06), inset 0 1px 0 rgba(255,255,255,.04);
+  backdrop-filter:blur(8px); max-width:680px; position:relative;
+}
+.palette::before{content:""; position:absolute; inset:-1px; border-radius:16px; padding:1px; pointer-events:none;
+  background:linear-gradient(120deg,rgba(255,138,61,.4),transparent 30%,transparent 70%,rgba(95,214,194,.25));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0); -webkit-mask-composite:xor; mask-composite:exclude; opacity:.5}
+.p-input{display:flex; align-items:center; gap:14px; padding:20px 22px; border-bottom:1px solid var(--line2)}
+.p-input .key{font-family:var(--mono); font-size:11px; color:var(--faint); border:1px solid var(--line); border-radius:6px; padding:3px 7px; white-space:nowrap}
+#paletteSearch{flex:1; background:none; border:none; outline:none; color:var(--ink); font-family:var(--serif); font-size:23px; font-weight:300}
+#paletteSearch::placeholder{color:var(--faint)}
+.p-input .caret{width:2px; height:26px; background:var(--ember); animation:blink 1.1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.p-list{padding:8px; max-height:340px; overflow-y:auto}
+.p-row{display:flex; align-items:center; gap:14px; padding:11px 14px; border-radius:10px; cursor:default; transition:background .15s}
+.p-row:hover,.p-row.sel{background:var(--ember-soft)}
+.p-row .ico{width:30px;height:30px;border-radius:7px;display:grid;place-items:center;font-size:14px;flex-shrink:0;
+  background:rgba(255,255,255,.05); border:1px solid var(--line)}
+.p-row.sel .ico{background:var(--ember);color:#1a0e05;border-color:transparent}
+.p-row .meta{min-width:0;flex:1}
+.p-row .nm{font-weight:400;font-size:15px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p-row .pa{font-family:var(--mono);font-size:11.5px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p-row .sc{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:right;flex-shrink:0}
+.p-row .sc b{color:var(--ember2);font-weight:500}
+.chip{font-family:var(--mono);font-size:9.5px;letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:5px;flex-shrink:0}
+.chip.repo{color:var(--repo);background:rgba(95,214,194,.1);border:1px solid rgba(95,214,194,.25)}
+.chip.dir{color:var(--dir);background:rgba(200,185,166,.07);border:1px solid var(--line)}
+.p-foot{display:flex;gap:18px;padding:13px 20px;border-top:1px solid var(--line2);font-family:var(--mono);font-size:11px;color:var(--faint)}
+.p-foot span b{color:var(--muted)}
+
+/* ---------- sections ---------- */
+section{padding:70px 0; border-top:1px solid var(--line2)}
+.sec-head{display:flex;align-items:baseline;gap:18px;margin-bottom:44px;flex-wrap:wrap}
+.sec-num{font-family:var(--mono);font-size:13px;color:var(--ember);letter-spacing:.1em}
+h2{font-family:var(--serif);font-weight:360;font-size:clamp(30px,4.5vw,46px);letter-spacing:-.02em;line-height:1.04}
+h2 em{font-style:italic;color:var(--ember2)}
+.sec-sub{color:var(--muted);max-width:620px;font-size:16.5px;margin-top:14px;flex-basis:100%}
+
+/* finding cards */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:18px}
+.card{border:1px solid var(--line);border-radius:14px;padding:26px;background:var(--panel);position:relative;transition:.3s;overflow:hidden}
+.card:hover{border-color:rgba(255,138,61,.35);transform:translateY(-3px);background:rgba(255,138,61,.03)}
+.card .verdict{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;display:inline-flex;align-items:center;gap:7px;margin-bottom:16px}
+.card .verdict.pass{color:var(--repo)} .card .verdict.fail{color:var(--trans)} .card .verdict.open{color:var(--ember2)}
+.card .verdict .b{width:7px;height:7px;border-radius:50%;background:currentColor;box-shadow:0 0 10px currentColor}
+.card h3{font-family:var(--serif);font-weight:420;font-size:21px;letter-spacing:-.01em;margin-bottom:10px;line-height:1.15}
+.card p{font-size:14.5px;color:var(--muted)}
+.card code{font-family:var(--mono);font-size:12.5px;background:rgba(255,255,255,.05);padding:1px 6px;border-radius:5px;color:var(--ember2)}
+
+/* the proof / toggle demo */
+.demo{border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,rgba(22,17,12,.7),rgba(13,11,10,.5));overflow:hidden}
+.demo-top{display:flex;align-items:center;gap:18px;padding:22px 26px;border-bottom:1px solid var(--line2);flex-wrap:wrap}
+.demo-top .lbl{font-family:var(--mono);font-size:12px;color:var(--muted);margin-right:auto}
+.toggle{display:inline-flex;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+.toggle button{font-family:var(--mono);font-size:12.5px;color:var(--muted);background:none;border:none;padding:8px 16px;border-radius:7px;cursor:pointer;transition:.2s;white-space:nowrap}
+.toggle button.on{background:var(--ember);color:#1a0e05;font-weight:500}
+.toggle button:not(.on):hover{color:var(--ink)}
+.bars{padding:18px 26px 26px;position:relative}
+.bar{position:relative;display:flex;align-items:center;gap:14px;padding:9px 0;will-change:transform}
+.bar .rank{font-family:var(--mono);font-size:12px;color:var(--faint);width:22px;text-align:right;flex-shrink:0}
+.bar .track{flex:1;min-width:0}
+.bar .toprow{display:flex;align-items:center;gap:10px;margin-bottom:5px}
+.bar .nm{font-size:14px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .val{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-left:auto;flex-shrink:0}
+.bar .fill{height:7px;border-radius:4px;background:linear-gradient(90deg,var(--ember),var(--ember2));transition:width .7s cubic-bezier(.2,.8,.2,1);box-shadow:0 0 12px rgba(255,138,61,.4)}
+.bar[data-kind=repo] .fill{background:linear-gradient(90deg,#3aa896,var(--repo))}
+.bar[data-kind=trans] .fill{background:linear-gradient(90deg,#8a3b37,var(--trans));box-shadow:none;opacity:.8}
+.bar[data-kind=trans] .nm{color:var(--muted)}
+.demo-note{padding:18px 26px;border-top:1px solid var(--line2);font-size:14px;color:var(--muted);font-style:italic;font-family:var(--serif)}
+.demo-note b{font-style:normal;color:var(--ember2);font-weight:500;font-family:var(--sans)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:16px;font-family:var(--mono);font-size:11px;color:var(--faint)}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px;vertical-align:middle}
+
+/* scaffold flow */
+.flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:30px}
+.step{border:1px solid var(--line);border-radius:13px;padding:22px 20px;background:var(--panel);position:relative}
+.step .n{font-family:var(--mono);font-size:11px;color:var(--ember);margin-bottom:12px}
+.step .ico{font-size:24px;margin-bottom:12px;display:block}
+.step h4{font-weight:500;font-size:15.5px;margin-bottom:6px}
+.step p{font-size:13px;color:var(--muted)}
+.step .arrow{position:absolute;right:-12px;top:50%;transform:translateY(-50%);color:var(--faint);z-index:2;font-family:var(--mono)}
+@media(max-width:640px){.step .arrow{display:none}}
+.feat{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.feat .f{border-left:2px solid var(--ember);padding:6px 0 6px 18px}
+.feat .f.no{border-color:var(--trans);opacity:.72}
+.feat .f h4{font-weight:500;font-size:15px;margin-bottom:4px;display:flex;gap:8px;align-items:center}
+.feat .f h4 .x{font-family:var(--mono);font-size:11px;color:var(--trans)}
+.feat .f h4 .y{font-family:var(--mono);font-size:11px;color:var(--ember)}
+.feat .f p{font-size:13.5px;color:var(--muted)}
+
+/* open questions */
+.q{border:1px solid var(--line);border-radius:13px;margin-bottom:13px;overflow:hidden;background:var(--panel);transition:.25s}
+.q:hover{border-color:rgba(255,138,61,.3)}
+.q-head{display:flex;align-items:center;gap:16px;padding:20px 24px;cursor:pointer;user-select:none}
+.q-risk{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:4px 9px;border-radius:6px;flex-shrink:0;white-space:nowrap}
+.q-risk.red{color:var(--trans);background:rgba(224,100,92,.1);border:1px solid rgba(224,100,92,.3)}
+.q-risk.yellow{color:var(--ember2);background:rgba(255,194,106,.08);border:1px solid rgba(255,194,106,.25)}
+.q-risk.green{color:var(--repo);background:rgba(95,214,194,.1);border:1px solid rgba(95,214,194,.3)}
+.q-head .qt{font-size:16px;font-weight:400;flex:1}
+.q-head .tw{font-family:var(--mono);font-size:18px;color:var(--faint);transition:.3s}
+.q.open .tw{transform:rotate(45deg);color:var(--ember)}
+.q-body{max-height:0;overflow:hidden;transition:max-height .35s ease}
+.q-body .inner{padding:0 24px 22px 24px;color:var(--muted);font-size:14.5px}
+.q-body .inner .how{margin-top:12px;font-family:var(--mono);font-size:12.5px;color:var(--ember2);background:rgba(255,138,61,.06);border-radius:8px;padding:12px 14px}
+
+/* competitor map */
+.mapwrap{display:grid;grid-template-columns:1.15fr .85fr;gap:30px;align-items:start}
+@media(max-width:820px){.mapwrap{grid-template-columns:1fr}}
+.map{position:relative;aspect-ratio:1;border:1px solid var(--line);border-radius:16px;background:
+  linear-gradient(rgba(255,255,255,.022) 1px,transparent 1px) 0 0/100% 10%,
+  linear-gradient(90deg,rgba(255,255,255,.022) 1px,transparent 1px) 0 0/10% 100%;
+  overflow:hidden}
+.map .axis{position:absolute;font-family:var(--mono);font-size:10.5px;color:var(--faint);letter-spacing:.05em;text-transform:uppercase}
+.map .axis.t{top:12px;left:50%;transform:translateX(-50%)}
+.map .axis.b{bottom:12px;left:50%;transform:translateX(-50%)}
+.map .axis.l{left:14px;top:50%;transform:translateY(-50%) rotate(-90deg);transform-origin:left}
+.map .axis.r{right:14px;top:50%;transform:translateY(-50%) rotate(90deg);transform-origin:right}
+.map .mid{position:absolute;background:var(--line2)}
+.map .mid.h{left:8%;right:8%;top:50%;height:1px} .map .mid.v{top:8%;bottom:8%;left:50%;width:1px}
+.dot{position:absolute;transform:translate(-50%,-50%);cursor:pointer;z-index:3}
+.dot .pt{width:13px;height:13px;border-radius:50%;background:var(--muted);border:2px solid var(--bg);transition:.2s}
+.dot .nm{position:absolute;left:50%;top:18px;transform:translateX(-50%);font-family:var(--mono);font-size:10.5px;color:var(--muted);white-space:nowrap;transition:.2s}
+.dot:hover{z-index:9} .dot:hover .pt{transform:scale(1.4)} .dot:hover .nm{color:var(--ink)}
+.dot.us .pt{background:var(--ember);width:17px;height:17px;box-shadow:0 0 0 5px var(--ember-soft),0 0 22px var(--ember);animation:pulse 2.4s infinite}
+.dot.us .nm{color:var(--ember2);font-weight:600;font-size:12px}
+@keyframes pulse{50%{box-shadow:0 0 0 11px transparent,0 0 26px var(--ember)}}
+.comp-detail{border:1px solid var(--line);border-radius:14px;padding:24px;background:var(--panel);min-height:230px}
+.comp-detail .who{font-family:var(--serif);font-size:22px;font-weight:440;margin-bottom:4px}
+.comp-detail .tag{font-family:var(--mono);font-size:11px;color:var(--ember);letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;display:block}
+.comp-detail p{font-size:14.5px;color:var(--muted);margin-bottom:14px}
+.comp-detail .vs{font-size:13.5px;border-top:1px solid var(--line2);padding-top:14px}
+.comp-detail .vs b{color:var(--ink);font-weight:500}
+.hint{font-family:var(--mono);font-size:11.5px;color:var(--faint);margin-top:14px}
+
+/* footer */
+footer{padding:60px 0 80px;border-top:1px solid var(--line2);color:var(--faint);font-family:var(--mono);font-size:12.5px}
+footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+footer a{color:var(--muted);text-decoration:none}
+footer a:hover{color:var(--ember)}
+
+/* reveal */
+.reveal{opacity:0;transform:translateY(26px);transition:opacity .7s,transform .7s}
+.reveal.in{opacity:1;transform:none}
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+  <div class="brand"><span class="dot"></span>z·for·finder</div>
+  <a href="#spikes" class="hideable">spikes</a>
+  <a href="#app" class="hideable">the app</a>
+  <a href="#questions">questions</a>
+  <a href="#field">the field</a>
+</div></nav>
+
+<header><div class="wrap">
+  <div class="eyebrow reveal">Project dossier · validated 2026-06-05</div>
+  <h1 class="reveal">The&nbsp;Warm<br><em>Navigator</em>.</h1>
+  <p class="lede reveal"><b>z for Finder</b> is rupa's terminal directory-jumper, reborn as a macOS app. One hotkey, a few letters, and you're <i>there</i> — ranked by where you actually work, not by what a bloated index guesses. The promise isn't features. It's <b>it works every single time, in 50ms.</b></p>
+
+  <!-- palette mock -->
+  <div class="palette reveal" id="palette">
+    <div class="p-input">
+      <span class="key">⌥ Space</span>
+      <input id="paletteSearch" placeholder="jump to…" autocomplete="off" spellcheck="false">
+      <span class="caret"></span>
+    </div>
+    <div class="p-list" id="paletteList"></div>
+    <div class="p-foot">
+      <span><b>↩</b> open in Finder</span>
+      <span><b>⌘↩</b> editor</span>
+      <span><b>⌃↩</b> terminal</span>
+      <span style="margin-left:auto"><b id="pcount">—</b> places indexed</span>
+    </div>
+  </div>
+</div></header>
+
+<!-- ============ SPIKES ============ -->
+<section id="spikes"><div class="wrap">
+  <div class="sec-head reveal">
+    <span class="sec-num">01</span>
+    <h2>What the spikes <em>told us</em></h2>
+    <p class="sec-sub">Three throwaway probes, run against a real Mac before a line of UI was written. The point was to kill the idea cheaply if the core signal wasn't real. It survived — and got sharper.</p>
+  </div>
+
+  <div class="cards" style="margin-bottom:28px">
+    <div class="card reveal">
+      <span class="verdict fail"><span class="b"></span>Spike 0 · falsified → rescued</span>
+      <h3>Use-count was a trap. Recency wasn't.</h3>
+      <p>The naïve <code>kMDItemUseCount</code> rollup failed twice: the <code>mdls</code> CLI couldn't read metadata at all (a broken Spotlight index, since rebuilt), and counting files surfaced <i>photo archives</i>, not workplaces. Recency via the framework was the real signal.</p>
+    </div>
+    <div class="card reveal">
+      <span class="verdict pass"><span class="b"></span>Spike 1 · pass</span>
+      <h3>The framework path is solid &amp; fast.</h3>
+      <p><code>NSMetadataQuery</code> returned <b>332/332</b> files with a readable <code>kMDItemLastUsedDate</code> in ~1.3s incl. compile. Where the flaky CLI failed, the API a real app would use works perfectly. Sub-50ms in-app is well within reach.</p>
+    </div>
+    <div class="card reveal">
+      <span class="verdict pass"><span class="b"></span>Spike 2 · pass</span>
+      <h3>Tuned ranking reads like your life.</h3>
+      <p>Blend recency × <code>√(useCount)</code>, roll up to the nearest <code>.git</code> root, down-weight transient dirs. The top of the list became real work — client decks, music projects, active repos, finances — not Downloads.</p>
+    </div>
+  </div>
+
+  <!-- interactive proof -->
+  <div class="demo reveal">
+    <div class="demo-top">
+      <span class="lbl">▸ real output — flip the ranking model</span>
+      <div class="toggle" id="modeToggle">
+        <button data-mode="recency">naïve recency</button>
+        <button data-mode="frecency" class="on">tuned frecency</button>
+      </div>
+    </div>
+    <div class="bars" id="bars"></div>
+    <div class="demo-note" id="demoNote"></div>
+  </div>
+  <div class="legend reveal">
+    <span><i style="background:linear-gradient(90deg,#3aa896,#5fd6c2)"></i>rolled up to a git repo</span>
+    <span><i style="background:linear-gradient(90deg,#ff8a3d,#ffc26a)"></i>folder / project</span>
+    <span><i style="background:linear-gradient(90deg,#8a3b37,#e0645c)"></i>transient — down-weighted ×0.08</span>
+  </div>
+</div></section>
+
+<!-- ============ THE APP ============ -->
+<section id="app"><div class="wrap">
+  <div class="sec-head reveal">
+    <span class="sec-num">02</span>
+    <h2>What the scaffold <em>would do</em></h2>
+    <p class="sec-sub">A native menu-bar app. No dock icon, no window until you summon it. The Spike-2 engine, cached and refreshed in the background, behind one global hotkey.</p>
+  </div>
+
+  <div class="flow reveal">
+    <div class="step"><span class="ico">⌨️</span><div class="n">01</div><h4>Summon</h4><p>A global hotkey (⌥Space) drops a palette over whatever you're doing. Always instant.</p><span class="arrow">→</span></div>
+    <div class="step"><span class="ico">🔥</span><div class="n">02</div><h4>Start warm</h4><p>It opens <i>pre-ranked</i> — most-frecent places already listed before you touch a key.</p><span class="arrow">→</span></div>
+    <div class="step"><span class="ico">⌁</span><div class="n">03</div><h4>Type to filter</h4><p>A few letters narrow an already-good list. Fuzzy, forgiving, sub-50ms.</p><span class="arrow">→</span></div>
+    <div class="step"><span class="ico">↩</span><div class="n">04</div><h4>Land</h4><p>Finder, default app, or — one keystroke away — editor &amp; terminal at that path.</p></div>
+  </div>
+
+  <div class="feat reveal">
+    <div class="f"><h4><span class="y">does</span>Learns from you, silently</h4><p>Frecency from native signals now; live Finder/editor observation later. It gets more <i>yours</i> over time.</p></div>
+    <div class="f"><h4><span class="y">does</span>Project-aware</h4><p>Rolls deep paths up to the git repo you think in, not the leaf folder a file happens to live in.</p></div>
+    <div class="f"><h4><span class="y">does</span>Reliable by design</h4><p>Small, hand-tuned, place-only index. The whole product is the absence of "it didn't find it."</p></div>
+    <div class="f no"><h4><span class="x">won't</span>Launch apps</h4><p>Spotlight &amp; Raycast own that. Adding it dilutes the focus and the reliability promise.</p></div>
+    <div class="f no"><h4><span class="x">won't</span>Orchestrate contexts</h4><p>Opening three apps at once is Bunch's job — and where "every time, 50ms" goes to die.</p></div>
+    <div class="f no"><h4><span class="x">won't</span>Be everything</h4><p>No web, no math, no AI chat. A navigator. Saying no is the entire strategy.</p></div>
+  </div>
+</div></section>
+
+<!-- ============ QUESTIONS ============ -->
+<section id="questions"><div class="wrap">
+  <div class="sec-head reveal">
+    <span class="sec-num">03</span>
+    <h2>Still <em>unanswered</em></h2>
+    <p class="sec-sub">What's green is proven on-machine. What's yellow is a known unknown that shapes the build but won't kill it. Tap to expand.</p>
+  </div>
+  <div id="qlist"></div>
+</div></section>
+
+<!-- ============ THE FIELD ============ -->
+<section id="field"><div class="wrap">
+  <div class="sec-head reveal">
+    <span class="sec-num">04</span>
+    <h2>Who it's <em>up against</em></h2>
+    <p class="sec-sub">The launcher space is crowded — but almost everyone is racing to do <i>more</i>. The open lane is the opposite corner: do one thing, learn from you, never miss. Hover a dot.</p>
+  </div>
+  <div class="mapwrap reveal">
+    <div class="map" id="map">
+      <span class="axis t">learns from you</span>
+      <span class="axis b">manual / static</span>
+      <span class="axis l">focused navigator</span>
+      <span class="axis r">everything launcher</span>
+      <span class="mid h"></span><span class="mid v"></span>
+    </div>
+    <div>
+      <div class="comp-detail" id="compDetail"></div>
+      <p class="hint">↑ the glowing dot is us — bottom-left lane: focused, and it learns.</p>
+    </div>
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  <span>z·for·finder — internal dossier</span>
+  <span>spikes 0–2 green · risk #2 (apple events) open</span>
+  <span><a href="#">docs/ideas/z-for-finder.md</a> · <a href="#">context.md</a></span>
+</div></footer>
+
+<script>
+/* ---------- data: real-ish output from the two spike runs ---------- */
+const PLACES = [
+  {nm:"Identifying Patterns & Scenarios", pa:"~/Documents/50 Work/51 EE/Conference/2026/AI Anchoring Day", rec:3.96, frec:15.90, kind:"dir"},
+  {nm:"22.11.04 Inception", pa:"~/Documents/20 Music/22 entMOOT/.../22.11 WIP", rec:1.99, frec:11.89, kind:"dir"},
+  {nm:"Logic", pa:"~/Music/Logic", rec:4.60, frec:11.37, kind:"dir"},
+  {nm:"flowcus-v2", pa:"~/code/flowcus-v2", rec:3.66, frec:11.04, kind:"repo"},
+  {nm:"flowcus-eleventy", pa:"~/code/flowcus-eleventy", rec:4.01, frec:7.15, kind:"repo"},
+  {nm:"Association", pa:"~/Documents/50 Work/51 EE/Association", rec:1.40, frec:7.01, kind:"dir"},
+  {nm:"beancount", pa:"~/Finance/beancount", rec:1.10, frec:6.87, kind:"repo"},
+  {nm:"2026 HPT", pa:"~/Documents/10 Admin/11 Health/Fitness", rec:2.95, frec:3.91, kind:"dir"},
+  {nm:"cl-axa-em-handover", pa:"~/code/cl-axa-em-handover", rec:2.16, frec:3.49, kind:"dir"},
+  {nm:"capability-lead", pa:"~/code/capability-lead", rec:2.69, frec:3.31, kind:"dir"},
+  {nm:"rendercv", pa:"~/Documents/50 Work/52 Career/CV/rendercv", rec:0.9, frec:3.29, kind:"dir"},
+  {nm:"lpx-explorer", pa:"~/code/lpx-explorer", rec:1.2, frec:2.84, kind:"repo"},
+  {nm:"Downloads", pa:"~/Downloads", rec:9.82, frec:0.79, kind:"trans"},
+  {nm:"Screenshots", pa:"~/Screenshots/2026/05/28", rec:2.66, frec:0.21, kind:"trans"},
+];
+const ICONS={repo:"⎇", dir:"▣", trans:"⌫"};
+
+/* ---------- palette mock ---------- */
+const pList=document.getElementById('paletteList'), pSearch=document.getElementById('paletteSearch');
+document.getElementById('pcount').textContent=PLACES.length*9+12; // flavour
+function renderPalette(q=""){
+  const f=PLACES.filter(p=>p.kind!=='trans')
+    .filter(p=>(p.nm+p.pa).toLowerCase().includes(q.toLowerCase()))
+    .sort((a,b)=>b.frec-a.frec).slice(0,7);
+  pList.innerHTML=f.map((p,i)=>`
+    <div class="p-row ${i===0?'sel':''}">
+      <div class="ico">${ICONS[p.kind]}</div>
+      <div class="meta"><div class="nm">${p.nm}</div><div class="pa">${p.pa}</div></div>
+      ${p.kind==='repo'?'<span class="chip repo">repo</span>':''}
+      <div class="sc">frec <b>${p.frec.toFixed(1)}</b></div>
+    </div>`).join('')|| `<div class="p-row"><div class="meta"><div class="pa" style="padding:10px">no match — and that's the point: it won't pretend.</div></div></div>`;
+}
+renderPalette(); pSearch.addEventListener('input',e=>renderPalette(e.target.value));
+
+/* ---------- toggle demo with FLIP ---------- */
+const barsEl=document.getElementById('bars'), noteEl=document.getElementById('demoNote');
+let mode='frecency';
+const NOTES={
+  recency:`Pure recency rewards whatever you touched last — so <b>Downloads tops the list</b> and deep asset leaves outrank the repos they live in. Useful, but noisy.`,
+  frecency:`Blend in frequency, roll up to git roots, down-weight transient dirs — and <b>Downloads & Screenshots collapse</b> while real projects rise. Same data, honest ranking.`
+};
+function drawBars(animate){
+  const sorted=[...PLACES].sort((a,b)=>b[mode==='recency'?'rec':'frec']-a[mode==='recency'?'rec':'frec']).slice(0,10);
+  const key=mode==='recency'?'rec':'frec';
+  const max=Math.max(...sorted.map(p=>p[key]));
+  // FLIP: record old
+  const old={}; [...barsEl.children].forEach(c=>old[c.dataset.id]=c.getBoundingClientRect().top);
+  barsEl.innerHTML=sorted.map((p,i)=>`
+    <div class="bar" data-id="${p.nm}" data-kind="${p.kind}">
+      <span class="rank">${i+1}</span>
+      <div class="track">
+        <div class="toprow"><span class="nm">${p.nm}</span><span class="val">${p[key].toFixed(2)}${p.kind==='trans'?' ↓':''}</span></div>
+        <div class="fill" style="width:${Math.max(4,p[key]/max*100)}%"></div>
+      </div>
+    </div>`).join('');
+  noteEl.innerHTML=NOTES[mode];
+  if(animate){ [...barsEl.children].forEach(c=>{
+    const o=old[c.dataset.id]; if(o==null)return;
+    const dy=o-c.getBoundingClientRect().top;
+    c.animate([{transform:`translateY(${dy}px)`},{transform:'none'}],{duration:560,easing:'cubic-bezier(.2,.8,.2,1)'});
+  });}
+}
+drawBars(false);
+document.querySelectorAll('#modeToggle button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#modeToggle button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); mode=b.dataset.mode; drawBars(true);
+}));
+
+/* ---------- open questions ---------- */
+const QS=[
+  {risk:'green', label:'Resolved', q:'Does the metadata signal even exist & work?', body:'Yes. <code>NSMetadataQuery</code> returned readable last-used dates for every recent file (332/332). The Spotlight <i>index</i> was healthy all along — only the <code>mdls</code> CLI was broken, by a corrupt Data-volume index that has since been rebuilt.', how:'Closed by Spikes 0 + 1 on real hardware.'},
+  {risk:'green', label:'Resolved', q:'Can a tuned ranking actually beat Spotlight for "places"?', body:'Demonstrably — see the toggle above. Recency × √(useCount) with git-rollup and transient down-weighting surfaced real workplaces at the top, in ~1.6s including compile.', how:'Closed by Spike 2. Remaining noise is blocklist tuning, not a signal failure.'},
+  {risk:'yellow', label:'Open · shapes build', q:'Can we reliably read what you navigate to, live?', body:'The "learns from you" layer ideally watches Finder\'s front-window path via Apple Events and editor recent-workspace lists. Unknown how reliable Apple Events is on Tahoe — the very OS whose Spotlight we don\'t trust. <b>Not a killer:</b> the recency+frequency bootstrap already stands without it.', how:'Next spike: poll Finder front-window path, measure failures & permission churn.'},
+  {risk:'yellow', label:'Open · the real crux', q:'What\'s the wedge — when the feature already exists?', body:'2026 research gut-check: the core feature <i>ships today</i>. The <code>mrpunkin/raycast-zoxide</code> extension is a GUI over zoxide\'s frecency DB; LaunchBar has learned navigation for ~20 years; Alfred learns on a 4-week window. So "reliability" alone is a <b>weak wedge</b> — it\'s invisible until something fails, and you can\'t demo an absence. The defensible angles are sharper and visible: <b>zero cold-start</b> (seed frecency on first launch from existing signals — nobody does this), <b>zero-dependency focus</b> (no zoxide/fzf/host launcher), a <b>better native frecency model</b>, and never-miss reliability as the backstop, not the headline.', how:'Tracked in bead z-for-finder-4g9. Commit to warm-seeding as a core requirement; demo "warm on day one" vs a cold Raycast.'},
+  {risk:'green', label:'Resolved', q:'Can it ship outside the App Store sandbox?', body:'Yes — going Developer ID + notarization + Sparkle (Apple account & signing keys in hand). This frees us to use Apple Events / Full Disk Access / a background agent without sandbox fights, same path as Alfred & Bartender. Distribution is direct licensing, not the App Store.', how:'Decided 2026-06-05. No longer a risk.'},
+  {risk:'yellow', label:'Open · design', q:'What\'s the unit of a "place" — folder, or project?', body:'Git-rollup handles repos cleanly, but non-git deep folders (a client deck buried 5 levels into Documents) still rank as leaves. The live-activity layer — "roll up to the folder you actually open" — is the likely answer.', how:'Resolved partly by the project-root rule; finished by activity observation.'},
+];
+document.getElementById('qlist').innerHTML=QS.map(q=>`
+  <div class="q reveal">
+    <div class="q-head">
+      <span class="q-risk ${q.risk}">${q.label}</span>
+      <span class="qt">${q.q}</span><span class="tw">+</span>
+    </div>
+    <div class="q-body"><div class="inner">${q.body}<div class="how">▸ ${q.how}</div></div></div>
+  </div>`).join('');
+document.querySelectorAll('.q-head').forEach(h=>h.addEventListener('click',()=>{
+  const q=h.parentElement, body=q.querySelector('.q-body');
+  const isOpen=q.classList.toggle('open');
+  body.style.maxHeight=isOpen?body.firstElementChild.scrollHeight+30+'px':0;
+}));
+
+/* ---------- competitor map ---------- */
+const COMPS=[
+  {id:'spotlight',nm:'Spotlight',x:86,y:42,tag:'the incumbent',who:'Apple Spotlight',p:'Everything-launcher baked into macOS: apps, files, web, math, Siri. Does so much it became unreliable in Tahoe — the bug that started this project.',vs:'We do a <b>fraction</b> of what it does, and that\'s the pitch: a navigator that never misses, because it isn\'t also doing nine other things.'},
+  {id:'raycast',nm:'Raycast',x:78,y:55,tag:'the darling',who:'Raycast',p:'Beautiful, free, extensible launcher with a huge plugin ecosystem and decent frecency-ish folder search. The one to beat on polish.',vs:'Raycast is a <b>platform</b> racing outward (AI, store, teams). We go the other way — one focused native tool, place-frecency tuned deeper than any general launcher bothers to.'},
+  {id:'alfred',nm:'Alfred',x:72,y:46,tag:'the workhorse',who:'Alfred',p:'The power-user classic: workflows, clipboard, fuzzy everything. Deep, scriptable, beloved by a devoted base.',vs:'Alfred is breadth-and-config. We\'re zero-config navigation that <b>learns silently</b> — no workflows to build for the core job.'},
+  {id:'launchbar',nm:'LaunchBar',x:64,y:64,tag:'the elder',who:'LaunchBar',p:'Pioneered adaptive abbreviation — it learns your shorthand over time. Closest in spirit to "it adapts to you," but still a general launcher.',vs:'Shared DNA (it learns!), but LaunchBar learns <i>abbreviations for everything</i>. We learn <b>your places</b>, specifically, and roll them up to projects.'},
+  {id:'bunch',nm:'Bunch',x:40,y:9,tag:'the orchestrator',who:'Bunch',p:'Plain-text, manual context-switching: one trigger opens a whole working set of apps & settings, and reverses it on close.',vs:'Bunch is <b>manual and orchestral</b> — you author contexts. We\'re automatic and surgical: get me to one place, instantly. We deliberately refuse to open three apps at once.'},
+  {id:'z',nm:'terminal z',x:24,y:74,tag:'the ancestor',who:'rupa/z · zoxide',p:'The original frecency directory-jumper. Brilliant — but trapped inside the terminal, blind to everything you do in the GUI.',vs:'We\'re z\'s idea <b>set free from the terminal</b>: same frecency soul, but it sees your whole Mac and opens into Finder, editors, anywhere.'},
+  {id:'zext',nm:'zoxide·Raycast',x:36,y:80,tag:'the real incumbent',who:'Zoxide Raycast extension',p:'The closest thing that already exists: a GUI over zoxide\'s frecency DB, with bidirectional CLI sync. Effectively "z for Finder" — but gated behind Raycast + a zoxide/fzf CLI setup, and it starts cold unless you\'re already a zoxide power user.',vs:'This is who we actually race. We win only on <b>defaults</b>: zero-dependency, navigation-native, and <b>warm on first launch</b> by seeding from existing signals — no CLI ritual required.'},
+  {id:'us',nm:'z for Finder',x:17,y:83,tag:'the open lane',who:'z for Finder',p:'A focused, GUI-native navigator that learns where you actually work and gets you there in 50ms — nothing more.',vs:'The empty corner everyone else left behind: <b>focused</b> instead of everything, and it <b>learns you</b> instead of waiting to be configured.',us:true},
+];
+const mapEl=document.getElementById('map'), detailEl=document.getElementById('compDetail');
+COMPS.forEach(c=>{
+  const d=document.createElement('div'); d.className='dot'+(c.us?' us':'');
+  d.style.left=c.x+'%'; d.style.top=(100-c.y)+'%';
+  d.innerHTML=`<div class="pt"></div><div class="nm">${c.nm}</div>`;
+  d.addEventListener('mouseenter',()=>showComp(c));
+  d.addEventListener('click',()=>showComp(c));
+  mapEl.appendChild(d);
+});
+function showComp(c){
+  detailEl.innerHTML=`<div class="who">${c.who}</div><span class="tag">${c.tag}</span><p>${c.p}</p><div class="vs">${c.vs}</div>`;
+}
+showComp(COMPS.find(c=>c.us));
+
+/* ---------- scroll reveal ---------- */
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.12});
+document.querySelectorAll('.reveal').forEach((el,i)=>{el.style.transitionDelay=(i%4*60)+'ms';io.observe(el)});
+</script>
+</body>
+</html>
