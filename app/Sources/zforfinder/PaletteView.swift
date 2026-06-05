@@ -1,4 +1,5 @@
 import SwiftUI
+import ZFFEngine
 
 struct PaletteView: View {
     @EnvironmentObject var state: AppState

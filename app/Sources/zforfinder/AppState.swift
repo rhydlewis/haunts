@@ -1,26 +1,15 @@
 import SwiftUI
 import Foundation
+import ZFFEngine
 
 let HOME = NSHomeDirectory()
-private let HALFLIFE_D = 30.0
-private func decay(_ ageDays: Double) -> Double { pow(0.5, max(0, ageDays) / HALFLIFE_D) }
-private func ageDays(since ts: Double) -> Double { (Date().timeIntervalSince1970 - ts) / 86400 }
 
 enum OpenMode { case finder, editor, terminal }
 
-struct Place: Identifiable {
-    let path: String
-    var score: Double
-    var sources: Set<String>
-    var id: String { path }
-    var name: String { (path as NSString).lastPathComponent }
-    var display: String { path.hasPrefix(HOME) ? "~" + path.dropFirst(HOME.count) : path }
-    var isRepo: Bool { sources.contains("git") }
-}
-
 /// The frecency engine (ports Spike 2 ranking + a git-repo warm seed) plus the
-/// palette's UI state. Index is built once at launch and kept cached; typing
-/// filters the cached list locally so it stays instant.
+/// palette's UI state. Pure ranking/scoring lives in `ZFFEngine`; this shell owns
+/// the @Published state and the impure adapters (git scan, Spotlight, open).
+/// Index is built once at launch and kept cached; typing filters locally so it stays instant.
 @MainActor
 final class AppState: ObservableObject {
     @Published var query = ""
@@ -32,41 +21,11 @@ final class AppState: ObservableObject {
     private var rootCache: [String: String] = [:]
     private var metaQuery: NSMetadataQuery?
 
-    // MARK: ranking / filtering
-    /// Stable order: score desc, then path asc — ties never shuffle between
-    /// renders (the shuffling was what opened the wrong folder).
-    private static func rankOrder(_ a: Place, _ b: Place) -> Bool {
-        a.score != b.score ? a.score > b.score : a.path < b.path
-    }
-
-    /// Lowercase and strip separators so `z for` matches `z-for-finder`.
-    private func norm(_ s: String) -> String {
-        String(s.lowercased().unicodeScalars.filter { CharacterSet.alphanumerics.contains($0) })
-    }
-    private func isSubseq(_ q: String, _ s: String) -> Bool {
-        var i = q.startIndex
-        for c in s where i < q.endIndex && c == q[i] { i = q.index(after: i) }
-        return i == q.endIndex
-    }
-    private func matchScore(_ q: String, _ p: Place) -> Double {
-        let n = norm(p.name)
-        var bonus = 0.0
-        if n.hasPrefix(q) { bonus += 3 } else if n.contains(q) { bonus += 1.5 }
-        return bonus + p.score
-    }
-
     /// PURE computed view of index+query — always fresh during render (no stale
     /// results), deterministic (stable tiebreak) so display == what opens.
     /// Matches the folder NAME only; path is used just to break ties.
     var results: [Place] {
-        let q = norm(query)
-        guard !q.isEmpty else { return Array(index.prefix(9)) }
-        return index
-            .filter { isSubseq(q, norm($0.name)) }
-            .sorted { matchScore(q, $0) != matchScore(q, $1)
-                      ? matchScore(q, $0) > matchScore(q, $1)
-                      : $0.path < $1.path }
-            .prefix(9).map { $0 }
+        Ranker.rank(query: query, over: index)
     }
 
     // MARK: lifecycle of a summon
@@ -89,12 +48,13 @@ final class AppState: ObservableObject {
     func rebuild() {
         var seed: [String: Place] = [:]
         repos = discoverRepos()
+        let now = Date().timeIntervalSince1970
         for repo in repos {
             let mt = gitActivity(repo)
-            bump(&seed, repo, "git", decay(ageDays(since: mt)))
+            bump(&seed, repo, "git", Scoring.decay(Scoring.ageDays(since: mt, now: now)))
         }
-        index = seed.values.sorted(by: Self.rankOrder)   // warm immediately from git
-        runMetadata(seed: seed)                          // then enrich with Spotlight signal
+        index = seed.values.sorted(by: Ranker.rankOrder)   // warm immediately from git
+        runMetadata(seed: seed)                            // then enrich with Spotlight signal
     }
 
     private func bump(_ map: inout [String: Place], _ path: String, _ source: String, _ w: Double) {
@@ -131,20 +91,12 @@ final class AppState: ObservableObject {
         return (mtimes.max() ?? Date(timeIntervalSince1970: 0)).timeIntervalSince1970
     }
 
+    /// Memoized roll-up of a path to its git root (pure walk lives in `Rollup`).
     private func gitRoot(_ dir: String) -> String {
         if let c = rootCache[dir] { return c }
-        var cur = dir
-        var root = dir
-        while cur.hasPrefix(HOME) && cur != HOME && cur != "/" {
-            if repos.contains(cur) { root = cur; break }
-            cur = (cur as NSString).deletingLastPathComponent
-        }
+        let root = Rollup.gitRoot(dir, repos: repos, home: HOME)
         rootCache[dir] = root
         return root
-    }
-
-    private func isTransient(_ path: String) -> Bool {
-        ["/Downloads", "/Desktop", "/Screenshots"].contains { path.hasPrefix(HOME + $0) }
     }
 
     private func runMetadata(seed: [String: Place]) {
@@ -170,14 +122,14 @@ final class AppState: ObservableObject {
                     let last = it.value(forAttribute: "kMDItemLastUsedDate") as? Date
                     let age = last.map { max(0, now.timeIntervalSince($0) / 86400) } ?? 90
                     let use = (it.value(forAttribute: "kMDItemUseCount") as? NSNumber)?.doubleValue ?? 1
-                    var w = pow(0.5, age / HALFLIFE_D) * sqrt(use)
+                    var w = Scoring.metaWeight(ageDays: age, useCount: use)
                     let root = self.gitRoot(dir)
-                    if self.isTransient(root) { w *= 0.08 }
+                    if Rollup.isTransient(root, home: HOME) { w *= Scoring.transientMultiplier }
                     self.bump(&map, root, "meta", w)
                 }
                 q.stop()
                 if let token { NotificationCenter.default.removeObserver(token) }
-                self.index = map.values.sorted(by: Self.rankOrder)
+                self.index = map.values.sorted(by: Ranker.rankOrder)
             }
         }
         metaQuery = q
