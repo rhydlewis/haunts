@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Swift version
+        run: swift --version
+
+      - name: Build
+        run: swift build --package-path app
+
+      - name: Test
+        run: |
+          if [ -d app/Tests ]; then
+            swift test --package-path app
+          else
+            echo "No test target yet — tracked in z-for-finder-7uk. Skipping tests."
+          fi
