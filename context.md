@@ -62,7 +62,7 @@ Now tracked in **beads** (`bd list`; git-backed, initialised this session):
 
 **Decisions locked:**
 - **Distribution: NOT App Store.** Developer ID + notarization + Sparkle (Apple account & signing keys in hand). Frees us to use Apple Events / Full Disk Access / background agent. Resolves the old sandbox risk.
-- **Name is a placeholder** — "z for Finder" is WIP; decide before building (bead snz).
+- **User-facing name: Haunts** (plural; decided 2026-06-05, bead snz). "Jump to your haunts" = the places you frequent. Plural chosen over singular "Haunt" — truer meaning AND the affordable namespace. Domain: **gethaunts.app** (~EUR 11, to register — bead b7t). Dropped: haunt.app (EUR 18,000, not justifiable pre-launch) and haunts.app (make-an-offer). Category is clear (no rival Mac launcher named Haunt/Haunts). Still TODO before branding spend: register gethaunts.app; formal USPTO trademark search; App Store listing ("Haunts — Folder Jumper" or similar). **Internal name `z-for-finder` stays** for repo/bundle id during dev.
 
 **Competitive research (2026) — the sobering truth:**
 - The core feature **already ships**. `mrpunkin/raycast-zoxide` is a GUI over zoxide's frecency DB with bidirectional CLI sync — effectively "z for Finder" today. LaunchBar has usage-adaptive navigation (~20 yrs). Alfred learns on a 4-week frequency window + OS metadata. Raycast Root Search has documented frecency (file-level less so). FastFolderFinder = same form-factor, no learning.
