@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Haunts — Settings (mockup)</title>
+<style>
+:root{
+  --accent:#e8732c;            /* Haunts ember — the app's macOS accent color */
+  --accent-press:#cf5f1d;
+}
+/* ---------- light (default) ---------- */
+body{
+  --win:#ECECEC; --content:#FFFFFF; --content2:#F6F6F7;
+  --titlebar:#E4E3E4; --toolbar:#E8E7E8;
+  --text:#1d1d1f; --secondary:#86868b; --tertiary:#aeaeb2;
+  --sep:rgba(0,0,0,.10); --hair:rgba(0,0,0,.07);
+  --control:#FFFFFF; --control-border:rgba(0,0,0,.18); --control-shadow:rgba(0,0,0,.10);
+  --track-off:#E3E3E5; --field:#FFFFFF; --group-border:rgba(0,0,0,.09);
+  --seg:#E8E8EA; --seg-sel:#FFFFFF; --row-hover:rgba(0,0,0,.035);
+}
+body.dark{
+  --win:#323234; --content:#2A2A2C; --content2:#252527;
+  --titlebar:#3a3a3c; --toolbar:#323234;
+  --text:#f5f5f7; --secondary:#98989d; --tertiary:#6e6e73;
+  --sep:rgba(255,255,255,.12); --hair:rgba(255,255,255,.07);
+  --control:#5a5a5e; --control-border:rgba(255,255,255,.16); --control-shadow:rgba(0,0,0,.4);
+  --track-off:#5a5a5e; --field:#1f1f21; --group-border:rgba(255,255,255,.08);
+  --seg:#1f1f21; --seg-sel:#636367; --row-hover:rgba(255,255,255,.05);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:-apple-system,"SF Pro Text","SF Pro","Helvetica Neue",sans-serif;
+  font-size:13px; color:var(--text); -webkit-font-smoothing:antialiased;
+  display:grid; place-items:center; min-height:100vh;
+  background:
+    radial-gradient(1200px 700px at 30% 10%, #6a8cc4, transparent 60%),
+    radial-gradient(1000px 800px at 80% 90%, #c98a5e, transparent 55%),
+    linear-gradient(135deg,#4a5a7a,#2e3548);
+  transition:background .4s;
+}
+body.dark{background:
+  radial-gradient(1200px 700px at 30% 10%, #2a3552, transparent 60%),
+  radial-gradient(1000px 800px at 80% 90%, #5a3a22, transparent 55%),
+  linear-gradient(135deg,#1a1f2e,#0e1118);}
+
+/* preview switch (not part of the app — a reviewer control) */
+.preview-bar{position:fixed; top:18px; left:50%; transform:translateX(-50%);
+  display:flex; align-items:center; gap:10px; font-size:12px; color:#fff;
+  background:rgba(0,0,0,.35); backdrop-filter:blur(10px); padding:7px 14px; border-radius:20px;
+  font-family:ui-monospace,"SF Mono",monospace; letter-spacing:.02em}
+.preview-bar button{font:inherit; color:#fff; background:rgba(255,255,255,.14); border:none;
+  padding:4px 11px; border-radius:12px; cursor:pointer}
+.preview-bar button.on{background:var(--accent)}
+
+/* ---------- window ---------- */
+.window{
+  width:600px; border-radius:11px; overflow:hidden;
+  background:var(--content);
+  box-shadow:0 30px 80px -20px rgba(0,0,0,.55), 0 0 0 .5px rgba(0,0,0,.2);
+  transition:background .35s,color .35s;
+}
+/* titlebar + toolbar tabs */
+.titlebar{background:var(--titlebar); padding:11px 14px 0; position:relative; transition:background .35s}
+.lights{display:flex; gap:8px; position:absolute; top:14px; left:14px}
+.lights i{width:12px;height:12px;border-radius:50%;display:block}
+.lights .r{background:#ff5f57} .lights .y{background:#febc2e} .lights .g{background:#28c840}
+.wtitle{text-align:center; font-size:13px; font-weight:600; color:var(--text); padding-bottom:9px; letter-spacing:.01em}
+.tabs{display:flex; justify-content:center; gap:2px; padding:0 8px 6px}
+.tab{display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 14px 5px; border-radius:6px;
+  cursor:pointer; color:var(--secondary); min-width:66px; transition:.12s}
+.tab:hover{background:var(--row-hover)}
+.tab.sel{background:color-mix(in srgb, var(--accent) 18%, transparent); color:var(--accent)}
+.tab .ico{font-size:17px; line-height:1}
+.tab .lbl{font-size:11px; font-weight:500}
+.toolbar-sep{height:.5px; background:var(--sep)}
+
+/* ---------- content ---------- */
+.content{padding:22px 26px 26px; min-height:330px; background:var(--content); transition:background .35s}
+.pane{display:none; animation:fade .18s ease}
+.pane.show{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(3px)}to{opacity:1}}
+
+/* macOS form grid: right-aligned labels | controls */
+.form{display:grid; grid-template-columns:160px 1fr; gap:14px 16px; align-items:center}
+.form .lab{text-align:right; color:var(--text); font-weight:400}
+.form .ctl{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.form .full{grid-column:1 / -1}
+.hint{color:var(--secondary); font-size:11.5px; line-height:1.45; margin-top:-4px}
+.section-label{grid-column:1 / -1; font-size:11px; font-weight:600; text-transform:uppercase;
+  letter-spacing:.04em; color:var(--tertiary); margin:6px 0 -4px}
+.divider{grid-column:1/-1; height:.5px; background:var(--hair); margin:8px 0}
+
+/* switch */
+.sw{width:38px;height:22px;border-radius:11px;background:var(--track-off);position:relative;cursor:pointer;
+  transition:background .18s; flex:none; box-shadow:inset 0 0 0 .5px rgba(0,0,0,.06)}
+.sw::after{content:"";position:absolute;top:1.5px;left:1.5px;width:19px;height:19px;border-radius:50%;
+  background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:left .18s}
+.sw.on{background:var(--accent)} .sw.on::after{left:17.5px}
+
+/* segmented control */
+.seg{display:inline-flex;background:var(--seg);border-radius:7px;padding:2px;gap:2px;
+  box-shadow:inset 0 0 0 .5px rgba(0,0,0,.06)}
+.seg button{font:inherit;font-size:12.5px;color:var(--text);background:transparent;border:none;
+  padding:4px 13px;border-radius:5px;cursor:pointer;transition:.12s;font-weight:450}
+.seg button.sel{background:var(--seg-sel);box-shadow:0 .5px 2px rgba(0,0,0,.18);font-weight:500}
+
+/* popup button */
+.popup{font:inherit;font-size:12.5px;color:var(--text);background:var(--control);
+  border:.5px solid var(--control-border);border-radius:6px;padding:4px 26px 4px 10px;cursor:pointer;
+  box-shadow:0 .5px 1.5px var(--control-shadow);position:relative;appearance:none;
+  background-image:linear-gradient(var(--accent),var(--accent));
+  background-size:16px 16px;background-position:right 4px center;background-repeat:no-repeat;
+  -webkit-mask:none}
+.popup-wrap{position:relative;display:inline-flex;align-items:center}
+.popup-wrap::after{content:"⌄";position:absolute;right:7px;top:1px;color:#fff;font-size:13px;pointer-events:none;font-weight:700}
+.popup-wrap .chev{position:absolute;right:4px;top:4px;width:16px;height:16px;border-radius:4px;background:var(--accent);
+  display:grid;place-items:center;color:#fff;font-size:9px;pointer-events:none}
+
+/* key recorder field */
+.recorder{font:inherit;display:inline-flex;align-items:center;gap:6px;background:var(--field);
+  border:.5px solid var(--control-border);border-radius:6px;padding:5px 10px;min-width:120px;justify-content:center;
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.06)}
+.recorder kbd{font-family:-apple-system,sans-serif;font-size:14px}
+.btn{font:inherit;font-size:12.5px;color:var(--text);background:var(--control);
+  border:.5px solid var(--control-border);border-radius:6px;padding:4px 11px;cursor:pointer;
+  box-shadow:0 .5px 1.5px var(--control-shadow)}
+.btn:active{background:var(--row-hover)}
+.btn.accent{background:var(--accent);color:#fff;border-color:transparent}
+
+/* stepper */
+.stepper{display:inline-flex;flex-direction:column;border:.5px solid var(--control-border);border-radius:5px;overflow:hidden;
+  box-shadow:0 .5px 1.5px var(--control-shadow)}
+.stepper button{background:var(--control);border:none;width:18px;height:11px;cursor:pointer;color:var(--secondary);font-size:8px;line-height:1}
+.stepper button:first-child{border-bottom:.5px solid var(--control-border)}
+.numfield{width:42px;text-align:center;font:inherit;background:var(--field);border:.5px solid var(--control-border);
+  border-radius:6px;padding:4px 0;color:var(--text);box-shadow:inset 0 1px 2px rgba(0,0,0,.06)}
+
+/* list box (scan roots / editors) */
+.listbox{grid-column:1/-1;border:.5px solid var(--group-border);border-radius:8px;overflow:hidden;background:var(--field)}
+.lrow{display:flex;align-items:center;gap:10px;padding:8px 11px;border-bottom:.5px solid var(--hair);cursor:default}
+.lrow:last-child{border-bottom:none}
+.lrow:hover{background:var(--row-hover)}
+.lrow .drag{color:var(--tertiary);cursor:grab;font-size:13px}
+.lrow .appicon{width:20px;height:20px;border-radius:5px;display:grid;place-items:center;font-size:12px;
+  background:color-mix(in srgb,var(--accent) 16%,transparent)}
+.lrow .grow{flex:1}
+.lrow .path{font-family:ui-monospace,"SF Mono",monospace;font-size:12px}
+.lrow .sub{color:var(--secondary);font-size:11px}
+.lrow .depth{color:var(--secondary);font-size:11.5px}
+.lfoot{display:flex;gap:0;background:var(--content2)}
+.lfoot button{background:transparent;border:none;border-right:.5px solid var(--hair);width:26px;height:24px;
+  cursor:pointer;color:var(--secondary);font-size:14px;line-height:1}
+.lfoot .spacer{flex:1;border-right:none}
+.lfoot .detect{border-right:none;width:auto;padding:0 12px;font-size:12px;font-family:-apple-system,sans-serif}
+.check{width:15px;height:15px;border-radius:4px;border:.5px solid var(--control-border);display:grid;place-items:center;
+  cursor:pointer;background:var(--field);flex:none}
+.check.on{background:var(--accent);border-color:transparent;color:#fff}
+.check.on::after{content:"✓";font-size:10px;font-weight:700}
+
+.foot-note{grid-column:1/-1;text-align:center;color:var(--secondary);font-size:11.5px;margin-top:6px}
+.foot-note kbd{font-family:-apple-system;background:var(--seg);padding:1px 5px;border-radius:4px;font-size:11px}
+.callout{grid-column:1/-1;display:flex;gap:9px;align-items:flex-start;background:color-mix(in srgb,var(--accent) 9%,transparent);
+  border:.5px solid color-mix(in srgb,var(--accent) 22%,transparent);border-radius:8px;padding:10px 12px;font-size:11.5px;color:var(--text)}
+.callout .i{color:var(--accent);font-size:13px;line-height:1.3}
+</style>
+</head>
+<body>
+
+<div class="preview-bar">
+  reviewer preview ·
+  <button id="pvLight" class="on" onclick="setTheme('light')">Light</button>
+  <button id="pvDark" onclick="setTheme('dark')">Dark</button>
+</div>
+
+<div class="window">
+  <div class="titlebar">
+    <div class="lights"><i class="r"></i><i class="y"></i><i class="g"></i></div>
+    <div class="wtitle">Haunts Settings</div>
+    <div class="tabs" id="tabs">
+      <div class="tab sel" data-pane="general"><span class="ico">⚙️</span><span class="lbl">General</span></div>
+      <div class="tab" data-pane="ranking"><span class="ico">🎯</span><span class="lbl">Ranking</span></div>
+      <div class="tab" data-pane="folders"><span class="ico">📁</span><span class="lbl">Folders</span></div>
+      <div class="tab" data-pane="open"><span class="ico">↗︎</span><span class="lbl">Open With</span></div>
+      <div class="tab" data-pane="about"><span class="ico">👻</span><span class="lbl">About</span></div>
+    </div>
+  </div>
+  <div class="toolbar-sep"></div>
+
+  <div class="content">
+
+    <!-- GENERAL -->
+    <div class="pane show" id="general">
+      <div class="form">
+        <div class="lab">Global shortcut</div>
+        <div class="ctl">
+          <span class="recorder"><kbd>⌃⌘Space</kbd></span>
+          <button class="btn" onclick="this.textContent= this.textContent=='Record…'?'Press keys…':'Record…'">Record…</button>
+        </div>
+
+        <div class="lab">Launch at login</div>
+        <div class="ctl"><div class="sw on" onclick="this.classList.toggle('on')"></div></div>
+
+        <div class="lab">Appearance</div>
+        <div class="ctl">
+          <div class="seg" id="appearanceSeg">
+            <button class="sel" onclick="setAppearance('system',this)">System</button>
+            <button onclick="setAppearance('light',this)">Light</button>
+            <button onclick="setAppearance('dark',this)">Dark</button>
+          </div>
+        </div>
+
+        <div class="lab">Refresh index</div>
+        <div class="ctl">
+          <span class="popup-wrap"><select class="popup">
+            <option>Every 15 minutes</option><option>Every hour</option><option>Manually</option>
+          </select><span class="chev">⌄</span></span>
+        </div>
+
+        <div class="divider"></div>
+        <div class="lab">Menu-bar icon</div>
+        <div class="ctl"><div class="sw on" onclick="this.classList.toggle('on')"></div></div>
+        <div class="ctl full" style="grid-column:2/-1;margin-top:-8px"><span class="hint">Haunts lives in the menu bar — there's no Dock icon.</span></div>
+      </div>
+    </div>
+
+    <!-- RANKING -->
+    <div class="pane" id="ranking">
+      <div class="form">
+        <div class="lab">Ranking mode</div>
+        <div class="ctl">
+          <div class="seg" id="modeSeg">
+            <button class="sel" onclick="setMode('balanced',this)">Balanced</button>
+            <button onclick="setMode('frequent',this)">Frequent</button>
+          </div>
+        </div>
+        <div class="full"><div class="callout"><span class="i">✦</span><span id="modeDesc">
+          <b>Balanced.</b> Blends where you work (git projects, recent files) with how often you go there — and keeps noise like Downloads down-weighted. The recommended default.
+        </span></div></div>
+
+        <div class="divider"></div>
+
+        <div class="lab">Learn from navigation</div>
+        <div class="ctl"><div class="sw on" onclick="this.classList.toggle('on')"></div></div>
+        <div class="ctl full" style="grid-column:2/-1;margin-top:-8px">
+          <span class="hint">Watches which folders you open in Finder so your most-used places rise to the top. Asks once for Automation access to Finder — nothing leaves your Mac.</span>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="lab">Frequent subfolders</div>
+        <div class="ctl"><div class="sw" onclick="this.classList.toggle('on')"></div></div>
+        <div class="ctl full" style="grid-column:2/-1;margin-top:-8px">
+          <span class="hint">Keep a subfolder you visit a lot as its own result instead of collapsing it into the project root.</span>
+        </div>
+        <div class="lab">Keep after</div>
+        <div class="ctl">
+          <input class="numfield" value="3">
+          <span class="stepper"><button>▲</button><button>▼</button></span>
+          <span class="hint" style="margin:0">visits</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOLDERS -->
+    <div class="pane" id="folders">
+      <div class="form">
+        <div class="section-label">Scan roots</div>
+        <div class="full"><span class="hint">Haunts indexes git projects and folders under these locations.</span></div>
+        <div class="listbox">
+          <div class="lrow"><span class="appicon">📁</span><div class="grow"><div class="path">~/code</div></div><span class="depth">depth 4</span></div>
+          <div class="lrow"><span class="appicon">🏠</span><div class="grow"><div class="path">~</div><div class="sub">Home</div></div><span class="depth">depth 2</span></div>
+          <div class="lfoot">
+            <button title="Add">+</button><button title="Remove">−</button>
+            <span class="spacer"></span>
+            <button class="detect">Choose folder…</button>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="lab">Ignore</div>
+        <div class="ctl"><span class="hint" style="margin:0"><code>node_modules</code>, <code>Library</code>, hidden folders</span></div>
+      </div>
+    </div>
+
+    <!-- OPEN WITH -->
+    <div class="pane" id="open">
+      <div class="form">
+        <div class="section-label">Editor &nbsp;·&nbsp; <kbd style="font-size:11px">⌘↩</kbd> opens the top enabled editor</div>
+        <div class="listbox">
+          <div class="lrow"><span class="drag">⠿</span><div class="check on"></div><span class="appicon">◇</span><div class="grow">Zed</div></div>
+          <div class="lrow"><span class="drag">⠿</span><div class="check on"></div><span class="appicon">⌗</span><div class="grow">Sublime Text</div></div>
+          <div class="lrow"><span class="drag">⠿</span><div class="check on"></div><span class="appicon">⊞</span><div class="grow">Xcode</div></div>
+          <div class="lrow"><span class="drag">⠿</span><div class="check"></div><span class="appicon">◈</span><div class="grow" style="color:var(--secondary)">PyCharm</div></div>
+          <div class="lfoot">
+            <button title="Add">+</button><button title="Remove">−</button>
+            <span class="spacer"></span>
+            <button class="detect">Auto-detect installed</button>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+        <div class="lab">Terminal</div>
+        <div class="ctl">
+          <span class="popup-wrap"><select class="popup">
+            <option>Terminal</option><option>iTerm</option><option>Warp</option><option>Ghostty</option>
+          </select><span class="chev">⌄</span></span>
+          <span class="hint" style="margin:0"><kbd style="font-size:11px">⌃↩</kbd></span>
+        </div>
+
+        <div class="foot-note"><kbd>↩</kbd> Finder &nbsp;·&nbsp; <kbd>⌘↩</kbd> editor &nbsp;·&nbsp; <kbd>⌃↩</kbd> terminal</div>
+      </div>
+    </div>
+
+    <!-- ABOUT -->
+    <div class="pane" id="about">
+      <div style="text-align:center;padding:8px 0 4px">
+        <div style="width:88px;height:88px;margin:0 auto;border-radius:21px;display:grid;place-items:center;font-size:48px;
+          background:radial-gradient(120% 120% at 30% 20%, #ffc98a, #e8732c 55%, #b8410f);
+          box-shadow:0 10px 26px -8px rgba(232,115,44,.65), inset 0 1.5px 0 rgba(255,255,255,.45), inset 0 -8px 18px rgba(120,30,0,.35);">
+          <span style="filter:drop-shadow(0 2px 3px rgba(0,0,0,.25))">👻</span>
+        </div>
+        <div style="font-size:23px;font-weight:600;margin-top:12px;letter-spacing:-.01em">Haunts</div>
+        <div style="color:var(--secondary);font-size:12px;margin-top:3px">Version 0.1 (1)</div>
+        <div style="font-style:italic;color:var(--secondary);margin-top:9px;font-size:13px">“Jump to your haunts.”</div>
+        <p style="max-width:390px;margin:15px auto 0;font-size:12.5px;line-height:1.55;color:var(--text)">
+          A keyboard-first navigator that learns where you work and takes you there instantly —
+          no Dock icon, no fuss. Just <kbd style="background:var(--seg);padding:1px 5px;border-radius:4px">⌃⌘Space</kbd>.
+        </p>
+        <div style="display:flex;gap:8px;justify-content:center;margin-top:20px;flex-wrap:wrap">
+          <button class="btn accent">☕&nbsp; Buy me a coffee</button>
+          <button class="btn">gethaunts.app</button>
+          <button class="btn">GitHub</button>
+          <button class="btn">Acknowledgements</button>
+        </div>
+        <div style="margin-top:24px;color:var(--secondary);font-size:11.5px;line-height:1.6">
+          Made with care by <a href="#" style="color:var(--accent);text-decoration:none;font-weight:500">Rhyd Lewis</a><br>
+          © 2026 · <a href="#" style="color:var(--secondary);text-decoration:none">Privacy</a> ·
+          <a href="#" style="color:var(--secondary);text-decoration:none">Release notes</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// tab switching
+document.querySelectorAll('#tabs .tab').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('#tabs .tab').forEach(x=>x.classList.remove('sel'));
+  t.classList.add('sel');
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('show'));
+  document.getElementById(t.dataset.pane).classList.add('show');
+}));
+
+// reviewer light/dark preview
+function setTheme(mode){
+  document.body.classList.toggle('dark', mode==='dark');
+  pvLight.classList.toggle('on', mode==='light');
+  pvDark.classList.toggle('on', mode==='dark');
+}
+// in-app Appearance control also drives the preview (System follows OS; here defaults light)
+function setAppearance(mode, btn){
+  [...appearanceSeg.children].forEach(b=>b.classList.remove('sel')); btn.classList.add('sel');
+  if(mode==='dark') setTheme('dark');
+  else setTheme('light');
+}
+
+// ranking mode description
+const DESC={
+  balanced:'<b>Balanced.</b> Blends where you work (git projects, recent files) with how often you go there — and keeps noise like Downloads down-weighted. The recommended default.',
+  frequent:'<b>Frequent (z-style).</b> Ranks purely by where you go most, like the terminal <code>z</code> tool. Snappier for heavy navigators, but more willing to surface Downloads, temp and scratch folders.'
+};
+function setMode(mode, btn){
+  [...modeSeg.children].forEach(b=>b.classList.remove('sel')); btn.classList.add('sel');
+  document.getElementById('modeDesc').innerHTML=DESC[mode];
+}
+// checkboxes + drag handles (editor list)
+document.querySelectorAll('.check').forEach(c=>c.addEventListener('click',()=>c.classList.toggle('on')));
+</script>
+</body>
+</html>
