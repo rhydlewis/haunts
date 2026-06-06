@@ -28,6 +28,6 @@ GOTCHAS:
 
 DONE = TRUE + VERIFIED: normalization + diversity ported & unit-tested (incl. no-single-source-dominates + multi-source-lifts); shell parse pure + tested; day-one index with EMPTY Store surfaces real working folders (git+shell+IDE+meta); ⌘⌫ on a palette row removes it from store + palette; all prior tests pass; swift build + `swift test --package-path app` green; pushed; CI green.
 
-VERIFY, DON'T ASSERT: swift test each step; then run the app (pkill+background) with the store emptied, ⌃⌘Space, confirm the warm list looks right; pick a junk row, ⌘⌫, confirm gone from palette AND frecency.json. Capture what you saw; `gh run watch`. Then close 4g9 + 9fs and add a Session-6 note to context.md.
+VERIFY, DON'T ASSERT: swift test each step; then run the app (pkill+background) with the store emptied, ⌃⌘Space, confirm the warm list looks right; pick a junk row, ⌘⌫, confirm gone from palette AND frecency.json. `gh run watch`. Then close 4g9 + 9fs; note in context.md.
 
 HONESTY: a prior run here faked beta/crash stats — unacceptable. Report only what you built/tested/ran; state partials plainly. Commit only green. Trunk-based small commits to main (no PR). End commits: Co-Authored-By: Claude <noreply@anthropic.com>
