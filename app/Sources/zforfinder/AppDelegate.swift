@@ -9,9 +9,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var statusItem: NSStatusItem!
     private var hotKey: HotKey?
     private var keyMonitor: Any?
+    private var prefsWindowController: PreferencesWindowController?
 
     @MainActor
     func applicationDidFinishLaunching(_ notification: Notification) {
+        applyAppearance(Settings.appearance)   // honor persisted Light/Dark/System
+
         state = AppState()
         state.rebuild()
 
@@ -22,12 +25,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         setupStatusItem()
 
-        // ⌃⌘Space — Carbon hotkey (no special permissions required)
-        hotKey = HotKey(keyCode: UInt32(kVK_Space),
-                        modifiers: UInt32(cmdKey | controlKey)) { [weak self] in
-            Task { @MainActor in self?.toggle() }
+        registerHotKey()   // reads the chord from Settings
+        NotificationCenter.default.addObserver(forName: .zffRemapHotKey, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.registerHotKey() }
         }
-        if hotKey == nil { NSLog("z-for-finder: failed to register ⌃⌘Space hotkey") }
 
         // Key routing while the palette is open (focus-stable, AppKit-level)
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
@@ -52,14 +53,46 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func setupStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem.button?.title = "⌁"
+        if let button = statusItem.button {
+            button.image = GhostIcon.menuBarImage(size: 18)   // template glyph (tints in light/dark)
+            button.image?.accessibilityDescription = "Haunts"
+        }
+        let chord = HotKeyUtils.displayString(keyCode: Settings.hotkeyKeyCode,
+                                              carbonModifiers: Settings.hotkeyModifiers)
         let menu = NSMenu()
-        let open = NSMenuItem(title: "Open  (⌃⌘Space)", action: #selector(toggle), keyEquivalent: "")
+        let open = NSMenuItem(title: "Open  (\(chord))", action: #selector(toggle), keyEquivalent: "")
         let rebuild = NSMenuItem(title: "Rebuild index", action: #selector(rebuildIndex), keyEquivalent: "r")
-        let quit = NSMenuItem(title: "Quit z for Finder", action: #selector(quit), keyEquivalent: "q")
-        [open, rebuild, quit].forEach { $0.target = self }
-        menu.addItem(open); menu.addItem(.separator()); menu.addItem(rebuild); menu.addItem(quit)
+        let settings = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        let quit = NSMenuItem(title: "Quit Haunts", action: #selector(quit), keyEquivalent: "q")
+        [open, rebuild, settings, quit].forEach { $0.target = self }
+        menu.addItem(open); menu.addItem(.separator())
+        menu.addItem(rebuild); menu.addItem(settings)
+        menu.addItem(.separator()); menu.addItem(quit)
         statusItem.menu = menu
+    }
+
+    /// (Re)register the global hotkey from the persisted Settings chord.
+    @MainActor private func registerHotKey() {
+        hotKey = nil   // deinit unregisters the previous one
+        hotKey = HotKey(keyCode: Settings.hotkeyKeyCode,
+                        modifiers: Settings.hotkeyModifiers) { [weak self] in
+            Task { @MainActor in self?.toggle() }
+        }
+        if hotKey == nil { NSLog("Haunts: failed to register hotkey") }
+        // Keep the menu hint in sync with the current chord.
+        if let item = statusItem?.menu?.items.first {
+            let chord = HotKeyUtils.displayString(keyCode: Settings.hotkeyKeyCode,
+                                                  carbonModifiers: Settings.hotkeyModifiers)
+            item.title = "Open  (\(chord))"
+        }
+    }
+
+    @MainActor @objc private func openSettings() {
+        if prefsWindowController == nil {
+            prefsWindowController = PreferencesWindowController(appState: state)
+        }
+        prefsWindowController?.showWindow(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     @MainActor @objc private func toggle() {
