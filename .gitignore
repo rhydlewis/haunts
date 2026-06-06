@@ -11,6 +11,9 @@ xcuserdata/
 *.xcuserstate
 DerivedData/
 
+# Assembled .app bundle (scripts/build-app.sh output)
+/build/
+
 # Scratch
 /tmp/
 *.log
