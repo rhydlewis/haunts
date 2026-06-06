@@ -104,6 +104,18 @@ public final class AppState: ObservableObject {
     private func warmSeedAndBlend() {
         lastDiscovered = WarmSeed.blend(sources: sourceWeights, home: HOME)
         reblend()
+        dumpIndexIfRequested()
+    }
+
+    /// Diagnostic: when `HAUNTS_DUMP_INDEX` is set, log the top of the live index so
+    /// the day-one warm list can be inspected without a screenshot. No-op otherwise.
+    private func dumpIndexIfRequested() {
+        guard ProcessInfo.processInfo.environment["HAUNTS_DUMP_INDEX"] != nil else { return }
+        let lines = index.prefix(20).enumerated().map { i, p in
+            String(format: "  %2d  %6.2f  [%@]  %@", i + 1, p.score,
+                   p.sources.sorted().joined(separator: ","), p.display)
+        }
+        NSLog("Haunts WARM INDEX (\(index.count) folders):\n" + lines.joined(separator: "\n"))
     }
 
     /// Record a live navigation visit and re-blend immediately (used by FinderTracker).
