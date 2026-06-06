@@ -6,8 +6,10 @@ import HauntsCore
 // MARK: - Theme
 
 extension Color {
-    /// Haunts ember accent (#e8732c).
-    static let ember = Color(red: 0xE8 / 255, green: 0x73 / 255, blue: 0x2C / 255)
+    /// Haunts ember accent ramp.
+    static let ember     = Color(red: 0xE8 / 255, green: 0x73 / 255, blue: 0x2C / 255) // #E8732C
+    static let emberGlow = Color(red: 0xFF / 255, green: 0xC9 / 255, blue: 0x8A / 255) // #FFC98A
+    static let emberDeep = Color(red: 0xB8 / 255, green: 0x41 / 255, blue: 0x0F / 255) // #B8410F
 }
 
 /// Apply the persisted appearance preference to the whole app.
@@ -157,6 +159,7 @@ struct PreferencesView: View {
                 .tabItem { Label("About", systemImage: "info.circle") }
         }
         .frame(width: 560, height: 420)
+        .tint(.ember)   // brand accent replaces system blue across all controls
     }
 }
 
@@ -411,8 +414,10 @@ private struct AboutTab: View {
                 .frame(width: 88, height: 88)
                 .background(
                     RoundedRectangle(cornerRadius: 21, style: .continuous)
-                        .fill(LinearGradient(colors: [Color(red: 1, green: 0.79, blue: 0.54), .ember],
-                                             startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .fill(RadialGradient(colors: [.emberGlow, .ember, .emberDeep],
+                                             center: UnitPoint(x: 0.3, y: 0.2),
+                                             startRadius: 2, endRadius: 96))
+                        .shadow(color: .ember.opacity(0.5), radius: 14, y: 6)
                 )
                 .padding(.top, 10)
 
