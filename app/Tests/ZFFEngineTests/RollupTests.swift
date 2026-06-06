@@ -5,7 +5,6 @@ import Foundation
 struct RollupTests {
 
     /// Build a temp "home" with a real repo (has .git) and a loose non-repo dir.
-    /// Returns (home, repos) mirroring what the app's discoverRepos would produce.
     private func makeFixture() throws -> (home: String, repos: Set<String>, cleanup: () -> Void) {
         let fm = FileManager.default
         let home = (NSTemporaryDirectory() as NSString)
@@ -18,7 +17,6 @@ struct RollupTests {
         try fm.createDirectory(atPath: deep, withIntermediateDirectories: true)
         try fm.createDirectory(atPath: loose, withIntermediateDirectories: true)
 
-        // Mimic discoverRepos: a dir is a repo iff it contains a .git child.
         var repos: Set<String> = []
         if fm.fileExists(atPath: (repo as NSString).appendingPathComponent(".git")) {
             repos.insert(repo)
@@ -51,6 +49,95 @@ struct RollupTests {
         #expect(Rollup.isTransient("/Users/x/Desktop/shot.png", home: home))
         #expect(!Rollup.isTransient("/Users/x/code/myrepo", home: home))
     }
+
+    // MARK: - keepSubfolder tests
+
+    @Test func keepSubfolderAboveThresholdReturnsSelf() throws {
+        let (home, repos, cleanup) = try makeFixture()
+        defer { cleanup() }
+        let repo = (home as NSString).appendingPathComponent("code/myrepo")
+        let src = URL(fileURLWithPath: (repo as NSString).appendingPathComponent("src"))
+
+        // visitCount >= minVisitCount → returns input unchanged
+        let result = Rollup.keepSubfolder(src, repos: repos, home: home, minVisitCount: 3, visitCount: 3)
+        #expect(result.path == src.path)
+    }
+
+    @Test func keepSubfolderExactlyAtThresholdReturnsSelf() throws {
+        let (home, repos, cleanup) = try makeFixture()
+        defer { cleanup() }
+        let repo = (home as NSString).appendingPathComponent("code/myrepo")
+        let src = URL(fileURLWithPath: (repo as NSString).appendingPathComponent("src"))
+
+        // visitCount == minVisitCount exactly → must return subfolder, not git root
+        let result = Rollup.keepSubfolder(src, repos: repos, home: home, minVisitCount: 5, visitCount: 5)
+        #expect(result.path == src.path)
+    }
+
+    @Test func keepSubfolderAboveHigherThreshold() throws {
+        let (home, repos, cleanup) = try makeFixture()
+        defer { cleanup() }
+        let repo = (home as NSString).appendingPathComponent("code/myrepo")
+        let src = URL(fileURLWithPath: (repo as NSString).appendingPathComponent("src"))
+
+        // 10 visits >> minVisitCount of 3
+        let result = Rollup.keepSubfolder(src, repos: repos, home: home, minVisitCount: 3, visitCount: 10)
+        #expect(result.path == src.path)
+    }
+
+    @Test func keepSubfolderBelowThresholdFallsBackToGitRoot() throws {
+        let (home, repos, cleanup) = try makeFixture()
+        defer { cleanup() }
+        let repo = (home as NSString).appendingPathComponent("code/myrepo")
+        let src = URL(fileURLWithPath: (repo as NSString).appendingPathComponent("src"))
+
+        // visitCount < minVisitCount → returns git root
+        let result = Rollup.keepSubfolder(src, repos: repos, home: home, minVisitCount: 3, visitCount: 2)
+        #expect(result.path == repo)
+    }
+
+    @Test func keepSubfolderZeroVisitsFallsBackToGitRoot() throws {
+        let (home, repos, cleanup) = try makeFixture()
+        defer { cleanup() }
+        let repo = (home as NSString).appendingPathComponent("code/myrepo")
+        let src = URL(fileURLWithPath: (repo as NSString).appendingPathComponent("src"))
+
+        let result = Rollup.keepSubfolder(src, repos: repos, home: home, minVisitCount: 3, visitCount: 0)
+        #expect(result.path == repo)
+    }
+
+    @Test func keepSubfolderNoGitAncestorReturnsSelf() {
+        // A path with no git ancestor falls back to itself (not to some random parent)
+        let home = "/Users/testuser"
+        let repos: Set<String> = []
+        let url = URL(fileURLWithPath: "/Users/testuser/notes/scratch")
+
+        // Below threshold but no git root → returns the URL itself
+        let result = Rollup.keepSubfolder(url, repos: repos, home: home, minVisitCount: 3, visitCount: 0)
+        #expect(result.path == url.path)
+    }
+
+    @Test func keepSubfolderDeepSubfolderAboveThreshold() throws {
+        let (home, repos, cleanup) = try makeFixture()
+        defer { cleanup() }
+        let repo = (home as NSString).appendingPathComponent("code/myrepo")
+        let deep = URL(fileURLWithPath: (repo as NSString).appendingPathComponent("src/feature/impl"))
+
+        // Deep path with enough visits → kept as-is
+        let result = Rollup.keepSubfolder(deep, repos: repos, home: home, minVisitCount: 3, visitCount: 3)
+        #expect(result.path == deep.path)
+    }
+
+    @Test func keepSubfolderDeepSubfolderBelowThreshold() throws {
+        let (home, repos, cleanup) = try makeFixture()
+        defer { cleanup() }
+        let repo = (home as NSString).appendingPathComponent("code/myrepo")
+        let deep = URL(fileURLWithPath: (repo as NSString).appendingPathComponent("src/feature/impl"))
+
+        // Deep path below threshold → collapses to git root
+        let result = Rollup.keepSubfolder(deep, repos: repos, home: home, minVisitCount: 3, visitCount: 1)
+        #expect(result.path == repo)
+    }
 }
 
 struct ScoringTests {
@@ -70,7 +157,6 @@ struct ScoringTests {
     }
 
     @Test func useCountBoost() {
-        // 4 uses -> sqrt(4) = 2x the weight of a single use at the same age.
         let one = Scoring.metaWeight(ageDays: 10, useCount: 1)
         let four = Scoring.metaWeight(ageDays: 10, useCount: 4)
         #expect(abs(four / one - 2.0) < 1e-9)

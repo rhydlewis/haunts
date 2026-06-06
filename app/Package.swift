@@ -10,6 +10,13 @@ let package = Package(
             name: "ZFFEngine",
             path: "Sources/ZFFEngine"
         ),
+        // Editor signal sources (Zed/Xcode/PyCharm recent folders). Foundation-only,
+        // never-throw. Standalone so it's testable without the executable. Not yet
+        // wired into the app shell — that happens in a later session.
+        .target(
+            name: "HauntsAdapters",
+            path: "Sources/HauntsAdapters"
+        ),
         // App shell: @MainActor state + impure adapters (git scan, Spotlight, open).
         .executableTarget(
             name: "zforfinder",
@@ -18,7 +25,7 @@ let package = Package(
         ),
         .testTarget(
             name: "ZFFEngineTests",
-            dependencies: ["ZFFEngine"],
+            dependencies: ["ZFFEngine", "HauntsAdapters"],
             path: "Tests/ZFFEngineTests"
         )
     ]
