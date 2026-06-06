@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Embedded into the binary's __TEXT,__info_plist section via linker flags
+         (see Package.swift). TCC reads NSAppleEventsUsageDescription from here when
+         the FinderTracker first sends an Apple Event to Finder. For the unbundled
+         SwiftPM binary the consent dialog attributes to the running process rather
+         than a bundled .app — a proper .app bundle is bead v3n. -->
+    <key>NSAppleEventsUsageDescription</key>
+    <string>Haunts reads the current folder of your front Finder window to learn the places you navigate to, so they rank higher when you search.</string>
+    <key>CFBundleIdentifier</key>
+    <string>app.gethaunts.zforfinder</string>
+    <key>CFBundleName</key>
+    <string>Haunts</string>
+    <key>LSUIElement</key>
+    <true/>
+</dict>
+</plist>

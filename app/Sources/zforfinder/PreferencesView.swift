@@ -38,7 +38,12 @@ final class PreferencesModel: ObservableObject {
 
     // Ranking
     @Published var rankingMode: String { didSet { Settings.rankingMode = rankingMode; appState?.applyRankingSettings() } }
-    @Published var learnFromNavigation: Bool { didSet { Settings.learnFromNavigation = learnFromNavigation } }
+    @Published var learnFromNavigation: Bool {
+        didSet {
+            Settings.learnFromNavigation = learnFromNavigation
+            NotificationCenter.default.post(name: .zffToggleLearnFromNavigation, object: nil)
+        }
+    }
     @Published var subfolderFrecency: Bool { didSet { Settings.subfolderFrecency = subfolderFrecency; appState?.applyRankingSettings() } }
     @Published var minVisitCount: Int { didSet { Settings.minVisitCount = minVisitCount; appState?.applyRankingSettings() } }
 

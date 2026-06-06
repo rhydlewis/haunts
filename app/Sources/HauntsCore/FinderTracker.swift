@@ -27,8 +27,8 @@ public final class FinderTracker {
     ///   - poll: returns the raw front-window POSIX path, or `nil` on any failure.
     ///           Injectable so tests drive it deterministically; defaults to the
     ///           real Apple Events query.
-    public init(interval: TimeInterval = 2,
-                poll: @escaping @MainActor () -> String? = FinderTracker.frontFinderWindowPath) {
+    public nonisolated init(interval: TimeInterval = 2,
+                            poll: @escaping @MainActor () -> String? = FinderTracker.frontFinderWindowPath) {
         self.interval = interval
         self.poll = poll
     }

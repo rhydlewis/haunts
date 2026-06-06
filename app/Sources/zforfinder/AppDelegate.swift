@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var hotKey: HotKey?
     private var keyMonitor: Any?
     private var prefsWindowController: PreferencesWindowController?
+    private let finderTracker = FinderTracker()
 
     @MainActor
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -48,6 +49,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         NotificationCenter.default.addObserver(forName: .zffHide, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.hide() }
+        }
+
+        // Live Finder-navigation tracking — start only if the user opted in; the
+        // Ranking tab's toggle posts .zffToggleLearnFromNavigation when it flips.
+        syncNavigationTracking()
+        NotificationCenter.default.addObserver(forName: .zffToggleLearnFromNavigation, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.syncNavigationTracking() }
+        }
+    }
+
+    /// Start or stop the FinderTracker to match the persisted Learn-from-navigation
+    /// setting. Off means no polling at all.
+    @MainActor private func syncNavigationTracking() {
+        if Settings.learnFromNavigation {
+            finderTracker.start(appState: state)
+        } else {
+            finderTracker.stop()
         }
     }
 

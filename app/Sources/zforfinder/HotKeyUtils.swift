@@ -88,4 +88,7 @@ enum HotKeyUtils {
 extension Notification.Name {
     /// Posted when the user rebinds the global hotkey — AppDelegate re-registers.
     static let zffRemapHotKey = Notification.Name("zffRemapHotKey")
+    /// Posted when the "Learn from navigation" toggle flips — AppDelegate starts/stops
+    /// the FinderTracker accordingly.
+    static let zffToggleLearnFromNavigation = Notification.Name("zffToggleLearnFromNavigation")
 }

@@ -28,7 +28,19 @@ let package = Package(
         .executableTarget(
             name: "zforfinder",
             dependencies: ["ZFFEngine", "HauntsAdapters", "HauntsCore"],
-            path: "Sources/zforfinder"
+            path: "Sources/zforfinder",
+            exclude: ["Info.plist"],
+            // Embed Info.plist into __TEXT,__info_plist so TCC can read
+            // NSAppleEventsUsageDescription for the unbundled binary (Apple Events
+            // consent prompt for the FinderTracker). A real .app bundle is bead v3n.
+            linkerSettings: [
+                .unsafeFlags([
+                    "-Xlinker", "-sectcreate",
+                    "-Xlinker", "__TEXT",
+                    "-Xlinker", "__info_plist",
+                    "-Xlinker", "Sources/zforfinder/Info.plist",
+                ])
+            ]
         ),
         .testTarget(
             name: "ZFFEngineTests",
