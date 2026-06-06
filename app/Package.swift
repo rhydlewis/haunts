@@ -17,15 +17,22 @@ let package = Package(
             name: "HauntsAdapters",
             path: "Sources/HauntsAdapters"
         ),
-        // App shell: @MainActor state + impure adapters (git scan, Spotlight, open).
+        // Testable app state: AppState, OpenMode, Settings. Extracted from the
+        // executable so unit tests can import it (executables aren't importable).
+        .target(
+            name: "HauntsCore",
+            dependencies: ["ZFFEngine", "HauntsAdapters"],
+            path: "Sources/HauntsCore"
+        ),
+        // App shell: AppDelegate, PaletteView, FloatingPanel, HotKey, main.
         .executableTarget(
             name: "zforfinder",
-            dependencies: ["ZFFEngine", "HauntsAdapters"],
+            dependencies: ["ZFFEngine", "HauntsAdapters", "HauntsCore"],
             path: "Sources/zforfinder"
         ),
         .testTarget(
             name: "ZFFEngineTests",
-            dependencies: ["ZFFEngine", "HauntsAdapters"],
+            dependencies: ["ZFFEngine", "HauntsAdapters", "HauntsCore"],
             path: "Tests/ZFFEngineTests"
         )
     ]

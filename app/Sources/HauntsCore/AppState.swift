@@ -5,56 +5,61 @@ import HauntsAdapters
 
 let HOME = NSHomeDirectory()
 
-enum OpenMode { case finder, editor, terminal }
+public enum OpenMode: Sendable { case finder, editor, terminal }
 
-/// The frecency engine (ports Spike 2 ranking + a git-repo warm seed) plus the
-/// palette's UI state. Pure ranking/scoring lives in `ZFFEngine`; this shell owns
-/// the @Published state and the impure adapters (git scan, Spotlight, open).
-/// Index is built once at launch and kept cached; typing filters locally so it stays instant.
+/// App state + index assembly. Pure ranking/scoring lives in `ZFFEngine`; this
+/// owns the @Published palette state and the impure adapters (git scan, Spotlight,
+/// editor recents, navigation persistence, open). Extracted into `HauntsCore` so
+/// it is unit-testable (the executable target cannot be imported by tests).
 @MainActor
-final class AppState: ObservableObject {
-    @Published var query = ""
-    @Published var index: [Place] = []       // full ranked list (sorted)
-    @Published var selection = 0
-    @Published var focusPing = 0             // bump to refocus the search field
+public final class AppState: ObservableObject {
+    @Published public var query = ""
+    @Published public var index: [Place] = []     // full ranked list (sorted)
+    @Published public var selection = 0
+    @Published public var focusPing = 0            // bump to refocus the search field
 
     private var repos: Set<String> = []
     private var rootCache: [String: String] = [:]
     private var metaQuery: NSMetadataQuery?
+    private var lastDiscovered: [Place] = []       // cached scan result for live re-blend
 
-    // Persistence + signal sources (Session 2). Store is empty until live navigation
-    // (FinderTracker) populates it, so this wiring is plumbing — no ranking change yet.
-    private let store = Store.defaultStore()
-    private let editorAdapters: [EditorAdapter] = [ZedAdapter(), XcodeAdapter(), PyCharmAdapter()]
+    private let store: Store
+    private let editorAdapters: [EditorAdapter]
     /// Index-build blend. Balanced is the shipped default; a future Preferences toggle
     /// can expose Frequent (z-style). See `RankingMode`.
     private let rankingMode: RankingMode = .default
 
-    /// PURE computed view of index+query — always fresh during render (no stale
-    /// results), deterministic (stable tiebreak) so display == what opens.
-    /// Matches the folder NAME only; path is used just to break ties.
-    var results: [Place] {
+    public init(
+        store: Store = .defaultStore(),
+        adapters: [EditorAdapter] = [ZedAdapter(), XcodeAdapter(), PyCharmAdapter()]
+    ) {
+        self.store = store
+        self.editorAdapters = adapters
+    }
+
+    /// PURE computed view of index+query — always fresh during render, deterministic.
+    public var results: [Place] {
         Ranker.rank(query: query, over: index)
     }
 
     // MARK: lifecycle of a summon
-    func prepareForShow() {
+    public func prepareForShow() {
         query = ""
         selection = 0
         focusPing &+= 1
     }
-    func move(_ delta: Int) {
+    public func move(_ delta: Int) {
         let n = results.count
         guard n > 0 else { return }
         selection = min(max(0, selection + delta), n - 1)
     }
-    func activate(_ mode: OpenMode) {
+    public func activate(_ mode: OpenMode) {
         guard results.indices.contains(selection) else { return }
         open(results[selection].path, mode)
     }
 
     // MARK: index build
-    func rebuild() {
+    public func rebuild() {
         var seed: [String: Place] = [:]
         repos = discoverRepos()
         let now = Date().timeIntervalSince1970
@@ -62,16 +67,25 @@ final class AppState: ObservableObject {
             let mt = gitActivity(repo)
             bump(&seed, repo, "git", Scoring.decay(Scoring.ageDays(since: mt, now: now)))
         }
-        // Editor recent-folders signal (Zed/Xcode/PyCharm), rolled up to git roots.
+        // Editor recent-folders signal (configured adapters), rolled up to git roots.
         for adapter in editorAdapters {
             guard let folders = try? adapter.recentFolders() else { continue }
             for url in folders { bump(&seed, gitRoot(url.path), "editor", 0.5) }
         }
-        let records = store.load()
-        // warm immediately: git+editor blended with any persisted visits (empty for now)
-        index = Frecency.blend(discovered: Array(seed.values), records: records,
+        lastDiscovered = Array(seed.values)
+        index = Frecency.blend(discovered: lastDiscovered, records: store.load(),
                                mode: rankingMode, repos: repos, home: HOME)
-        runMetadata(seed: seed, records: records)          // then enrich with Spotlight signal
+        runMetadata(seed: seed)                            // then enrich with Spotlight signal
+    }
+
+    /// Record a live navigation visit and re-blend immediately (used by FinderTracker).
+    public func trackNavigation(path: URL) {
+        store.record(path: path)
+        reblend()
+    }
+    private func reblend() {
+        index = Frecency.blend(discovered: lastDiscovered, records: store.load(),
+                               mode: rankingMode, repos: repos, home: HOME)
     }
 
     private func bump(_ map: inout [String: Place], _ path: String, _ source: String, _ w: Double) {
@@ -96,8 +110,7 @@ final class AppState: ObservableObject {
                 if fm.fileExists(atPath: p + "/.git") { found.insert(p); en.skipDescendants() }
             }
         }
-        scan(HOME + "/code", 4)
-        scan(HOME, 2)
+        for root in Settings.scanRoots { scan(root.path, root.depth) }   // configurable scan roots
         return found
     }
 
@@ -116,7 +129,7 @@ final class AppState: ObservableObject {
         return root
     }
 
-    private func runMetadata(seed: [String: Place], records: [PlaceRecord]) {
+    private func runMetadata(seed: [String: Place]) {
         let q = NSMetadataQuery()
         q.predicate = NSPredicate(format: "kMDItemLastUsedDate >= %@",
                                   Date(timeIntervalSinceNow: -90 * 86400) as NSDate)
@@ -146,8 +159,8 @@ final class AppState: ObservableObject {
                 }
                 q.stop()
                 if let token { NotificationCenter.default.removeObserver(token) }
-                self.index = Frecency.blend(discovered: Array(map.values), records: records,
-                                            mode: self.rankingMode, repos: self.repos, home: HOME)
+                self.lastDiscovered = Array(map.values)
+                self.reblend()
             }
         }
         metaQuery = q
@@ -160,7 +173,11 @@ final class AppState: ObservableObject {
         case .finder:
             NSWorkspace.shared.open(URL(fileURLWithPath: path))
         case .editor:
-            run(["-a", "Sublime Text", path])
+            if let ed = Settings.editorTargetsOrDefault().first(where: { $0.isEnabled }) {
+                run(["-b", ed.bundleID, path])          // open folder in the configured editor
+            } else {
+                run(["-a", "Sublime Text", path])       // fallback when nothing detected
+            }
         case .terminal:
             run(["-a", "Terminal", path])
         }

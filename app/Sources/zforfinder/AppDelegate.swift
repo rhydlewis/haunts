@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import Carbon.HIToolbox
+import HauntsCore
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var state: AppState!

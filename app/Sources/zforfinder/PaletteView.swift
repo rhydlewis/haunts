@@ -1,5 +1,6 @@
 import SwiftUI
 import ZFFEngine
+import HauntsCore
 
 struct PaletteView: View {
     @EnvironmentObject var state: AppState
