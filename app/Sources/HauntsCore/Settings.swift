@@ -62,6 +62,106 @@ public struct Settings {
         set { UserDefaults.standard.set(Int(newValue), forKey: "haunts.hotkeyModifiers") }
     }
 
+    // MARK: Ranking
+
+    /// Raw ranking-mode identifier. Kept as a String so `Settings` stays
+    /// Foundation-only; `AppState` maps it to `ZFFEngine.RankingMode`.
+    /// Valid values: "balanced" (default) / "frequent".
+    public static let defaultRankingMode = "balanced"
+    public static var rankingMode: String {
+        get { UserDefaults.standard.string(forKey: "haunts.rankingMode") ?? defaultRankingMode }
+        set { UserDefaults.standard.set(newValue, forKey: "haunts.rankingMode") }
+    }
+
+    /// Keep a frequently-visited subfolder as its own result instead of
+    /// collapsing it into the git root. Default off.
+    public static var subfolderFrecency: Bool {
+        get { UserDefaults.standard.bool(forKey: "haunts.subfolderFrecency") }
+        set { UserDefaults.standard.set(newValue, forKey: "haunts.subfolderFrecency") }
+    }
+
+    /// Minimum visits before a subfolder is kept (used with `subfolderFrecency`).
+    public static let defaultMinVisitCount = 3
+    public static var minVisitCount: Int {
+        get {
+            let raw = UserDefaults.standard.integer(forKey: "haunts.minVisitCount")
+            return raw == 0 ? defaultMinVisitCount : raw
+        }
+        set { UserDefaults.standard.set(newValue, forKey: "haunts.minVisitCount") }
+    }
+
+    /// Persisted only this session — the live Finder tracker is Session 5.
+    /// Defaults on (matches the mockup).
+    public static var learnFromNavigation: Bool {
+        get { boolOrDefault("haunts.learnFromNavigation", default: true) }
+        set { UserDefaults.standard.set(newValue, forKey: "haunts.learnFromNavigation") }
+    }
+
+    // MARK: Appearance
+
+    /// "system" (default) / "light" / "dark". Drives `NSApp.appearance`.
+    public static let defaultAppearance = "system"
+    public static var appearance: String {
+        get { UserDefaults.standard.string(forKey: "haunts.appearance") ?? defaultAppearance }
+        set { UserDefaults.standard.set(newValue, forKey: "haunts.appearance") }
+    }
+
+    // MARK: Launch at login
+
+    /// Persisted preference. Actual `SMAppService` registration only takes
+    /// effect from a signed `.app` bundle, not the SwiftPM debug binary.
+    public static var launchAtLogin: Bool {
+        get { UserDefaults.standard.bool(forKey: "haunts.launchAtLogin") }
+        set { UserDefaults.standard.set(newValue, forKey: "haunts.launchAtLogin") }
+    }
+
+    // MARK: Refresh interval
+
+    /// Index refresh interval in minutes. 0 means "Manually". Default 15.
+    public static let defaultRefreshInterval = 15
+    public static var refreshIntervalMinutes: Int {
+        get {
+            guard UserDefaults.standard.object(forKey: "haunts.refreshIntervalMinutes") != nil else {
+                return defaultRefreshInterval
+            }
+            return UserDefaults.standard.integer(forKey: "haunts.refreshIntervalMinutes")
+        }
+        set { UserDefaults.standard.set(newValue, forKey: "haunts.refreshIntervalMinutes") }
+    }
+
+    // MARK: Terminal target
+
+    /// App name used for the ⌃↩ "open in terminal" verb. Default "Terminal".
+    public static let defaultTerminal = "Terminal"
+    public static var terminalTarget: String {
+        get { UserDefaults.standard.string(forKey: "haunts.terminalTarget") ?? defaultTerminal }
+        set { UserDefaults.standard.set(newValue, forKey: "haunts.terminalTarget") }
+    }
+
+    /// Terminal apps offered in the picker (only those installed are shown).
+    public static let knownTerminals = ["Terminal", "iTerm", "Warp", "Ghostty"]
+
+    public static func detectInstalledTerminals() -> [String] {
+        let fm = FileManager.default
+        let appName: [String: String] = [
+            "Terminal": "Terminal", "iTerm": "iTerm", "Warp": "Warp", "Ghostty": "Ghostty",
+        ]
+        var found = knownTerminals.filter { fm.fileExists(atPath: "/Applications/\(appName[$0] ?? $0).app") }
+        // /System path for the built-in Terminal.app
+        if !found.contains("Terminal"),
+           fm.fileExists(atPath: "/System/Applications/Utilities/Terminal.app") {
+            found.insert("Terminal", at: 0)
+        }
+        return found.isEmpty ? ["Terminal"] : found
+    }
+
+    // MARK: - Helpers
+
+    private static func boolOrDefault(_ key: String, default def: Bool) -> Bool {
+        guard UserDefaults.standard.object(forKey: key) != nil else { return def }
+        return UserDefaults.standard.bool(forKey: key)
+    }
+
     // MARK: Editor targets
 
     public static var editorTargets: [EditorTarget] {

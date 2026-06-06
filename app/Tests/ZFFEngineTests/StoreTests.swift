@@ -400,3 +400,41 @@ struct StoreAtomicWriteTests {
         #expect(parsed[0].visitCount == 2)
     }
 }
+
+// MARK: - Reset
+
+@Suite("StoreResetTests")
+struct StoreResetTests {
+
+    @Test func resetEmptiesAStoreWithRecords() {
+        let (store, _, cleanup) = makeTempStore()
+        defer { cleanup() }
+        store.record(path: URL(fileURLWithPath: "/a"))
+        store.record(path: URL(fileURLWithPath: "/b"))
+        #expect(store.load().count == 2)
+
+        store.reset()
+        #expect(store.load().isEmpty)
+        #expect(entryCount(at: store.fileURL) == 0)
+    }
+
+    @Test func resetWritesEmptyArrayFile() throws {
+        let (store, _, cleanup) = makeTempStore()
+        defer { cleanup() }
+        store.record(path: URL(fileURLWithPath: "/a"))
+        store.reset()
+        let raw = try String(contentsOf: store.fileURL, encoding: .utf8)
+        // Decodes back to an empty array of records.
+        let data = Data(raw.utf8)
+        let decoded = try JSONDecoder().decode([PlaceRecord].self, from: data)
+        #expect(decoded.isEmpty)
+    }
+
+    @Test func resetOnEmptyStoreIsIdempotent() {
+        let (store, _, cleanup) = makeTempStore()
+        defer { cleanup() }
+        store.reset()
+        store.reset()
+        #expect(store.load().isEmpty)
+    }
+}

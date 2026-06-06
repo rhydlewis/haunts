@@ -94,6 +94,14 @@ public struct Store: Sendable {
         write(Array(byPath.values))
     }
 
+    // MARK: - Reset
+
+    /// Forget every recorded visit: overwrite the store with an empty list.
+    /// Used by "Reset Learned Data…" in Preferences. Never throws.
+    public func reset() {
+        write([])
+    }
+
     // MARK: - Merge (rebuild seed)
 
     /// Merge store records with freshly-discovered `[Place]` and return a ranked list.

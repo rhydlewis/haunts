@@ -25,9 +25,14 @@ public final class AppState: ObservableObject {
 
     private let store: Store
     private let editorAdapters: [EditorAdapter]
-    /// Index-build blend. Balanced is the shipped default; a future Preferences toggle
-    /// can expose Frequent (z-style). See `RankingMode`.
-    private let rankingMode: RankingMode = .default
+
+    /// Index-build blend, read live from `Settings` so the Ranking tab can change it.
+    /// Balanced is the shipped default; Preferences exposes Balanced/Frequent.
+    private var rankingMode: RankingMode {
+        RankingMode(rawValue: Settings.rankingMode) ?? .default
+    }
+    private var subfolderFrecency: Bool { Settings.subfolderFrecency }
+    private var minVisitCount: Int { Settings.minVisitCount }
 
     public init(
         store: Store = .defaultStore(),
@@ -74,7 +79,8 @@ public final class AppState: ObservableObject {
         }
         lastDiscovered = Array(seed.values)
         index = Frecency.blend(discovered: lastDiscovered, records: store.load(),
-                               mode: rankingMode, repos: repos, home: HOME)
+                               mode: rankingMode, subfolderFrecency: subfolderFrecency,
+                               minVisitCount: minVisitCount, repos: repos, home: HOME)
         runMetadata(seed: seed)                            // then enrich with Spotlight signal
     }
 
@@ -85,7 +91,19 @@ public final class AppState: ObservableObject {
     }
     private func reblend() {
         index = Frecency.blend(discovered: lastDiscovered, records: store.load(),
-                               mode: rankingMode, repos: repos, home: HOME)
+                               mode: rankingMode, subfolderFrecency: subfolderFrecency,
+                               minVisitCount: minVisitCount, repos: repos, home: HOME)
+    }
+
+    /// Re-apply ranking settings (mode / subfolder / min-visit) without rescanning
+    /// the disk — used after a Preferences change.
+    public func applyRankingSettings() { reblend() }
+
+    /// Forget every recorded visit, then re-blend so the change is immediate.
+    /// Backs "Reset Learned Data…" in Preferences.
+    public func resetLearnedData() {
+        store.reset()
+        reblend()
     }
 
     private func bump(_ map: inout [String: Place], _ path: String, _ source: String, _ w: Double) {
@@ -179,7 +197,7 @@ public final class AppState: ObservableObject {
                 run(["-a", "Sublime Text", path])       // fallback when nothing detected
             }
         case .terminal:
-            run(["-a", "Terminal", path])
+            run(["-a", Settings.terminalTarget, path])
         }
     }
     private func run(_ args: [String]) {

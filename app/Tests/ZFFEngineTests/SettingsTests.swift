@@ -102,6 +102,124 @@ struct SettingsPersistenceTests {
     }
 }
 
+// MARK: - Session-4 settings (ranking / appearance / launch / refresh / terminal)
+
+@Suite("Session4SettingsTests", .serialized)
+struct Session4SettingsTests {
+
+    private func clearKeys() {
+        for key in [
+            "haunts.rankingMode", "haunts.subfolderFrecency", "haunts.minVisitCount",
+            "haunts.learnFromNavigation", "haunts.appearance", "haunts.launchAtLogin",
+            "haunts.refreshIntervalMinutes", "haunts.terminalTarget",
+        ] { UserDefaults.standard.removeObject(forKey: key) }
+    }
+
+    @Test func rankingModeDefaultsToBalanced() {
+        clearKeys()
+        #expect(Settings.rankingMode == "balanced")
+    }
+
+    @Test func rankingModeRoundTrips() {
+        clearKeys()
+        Settings.rankingMode = "frequent"
+        #expect(Settings.rankingMode == "frequent")
+        clearKeys()
+    }
+
+    @Test func subfolderFrecencyDefaultsOff() {
+        clearKeys()
+        #expect(Settings.subfolderFrecency == false)
+    }
+
+    @Test func subfolderFrecencyRoundTrips() {
+        clearKeys()
+        Settings.subfolderFrecency = true
+        #expect(Settings.subfolderFrecency == true)
+        clearKeys()
+    }
+
+    @Test func minVisitCountDefaultsToThree() {
+        clearKeys()
+        #expect(Settings.minVisitCount == 3)
+    }
+
+    @Test func minVisitCountRoundTrips() {
+        clearKeys()
+        Settings.minVisitCount = 7
+        #expect(Settings.minVisitCount == 7)
+        clearKeys()
+    }
+
+    @Test func learnFromNavigationDefaultsOn() {
+        clearKeys()
+        #expect(Settings.learnFromNavigation == true)
+    }
+
+    @Test func learnFromNavigationRoundTrips() {
+        clearKeys()
+        Settings.learnFromNavigation = false
+        #expect(Settings.learnFromNavigation == false)
+        clearKeys()
+    }
+
+    @Test func appearanceDefaultsToSystem() {
+        clearKeys()
+        #expect(Settings.appearance == "system")
+    }
+
+    @Test func appearanceRoundTrips() {
+        clearKeys()
+        Settings.appearance = "dark"
+        #expect(Settings.appearance == "dark")
+        clearKeys()
+    }
+
+    @Test func launchAtLoginDefaultsOff() {
+        clearKeys()
+        #expect(Settings.launchAtLogin == false)
+    }
+
+    @Test func launchAtLoginRoundTrips() {
+        clearKeys()
+        Settings.launchAtLogin = true
+        #expect(Settings.launchAtLogin == true)
+        clearKeys()
+    }
+
+    @Test func refreshIntervalDefaultsTo15() {
+        clearKeys()
+        #expect(Settings.refreshIntervalMinutes == 15)
+    }
+
+    @Test func refreshIntervalRoundTripsIncludingManualZero() {
+        clearKeys()
+        Settings.refreshIntervalMinutes = 60
+        #expect(Settings.refreshIntervalMinutes == 60)
+        Settings.refreshIntervalMinutes = 0   // "Manually"
+        #expect(Settings.refreshIntervalMinutes == 0)
+        clearKeys()
+    }
+
+    @Test func terminalDefaultsToTerminal() {
+        clearKeys()
+        #expect(Settings.terminalTarget == "Terminal")
+    }
+
+    @Test func terminalRoundTrips() {
+        clearKeys()
+        Settings.terminalTarget = "iTerm"
+        #expect(Settings.terminalTarget == "iTerm")
+        clearKeys()
+    }
+
+    @Test func detectInstalledTerminalsNeverEmpty() {
+        // Machine-dependent, but must always include at least the built-in Terminal.
+        let found = Settings.detectInstalledTerminals()
+        #expect(found.contains("Terminal"))
+    }
+}
+
 // MARK: - EditorTarget autodetect
 
 @Suite("EditorTargetDetectTests")
