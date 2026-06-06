@@ -138,3 +138,23 @@ Built the full **Haunts Settings** window matching `docs/preferences-mockup.html
 - Live in-situ menu-bar screenshot of the glyph was blocked by this machine's multi-display + a fullscreen app owning the main Space (screencapture rect instability). Verified instead via the functional status menu (AX) + standalone render of the identical path. The glyph IS installed as a template image.
 
 **Verification env note:** GUI driving needed Accessibility + Screen Recording consent for the controlling process; once granted, drove the window via System Events and captured per-tab screenshots. SwiftUI's AX tree (`entire contents`) is flaky — clicking tabs by screen coordinate was more reliable.
+
+## Session 5 — LIVE FINDER-NAVIGATION TRACKING BUILT, WIRED & VERIFIED (2026-06-06, on main, CI target)
+Filled the empty Store from real navigation — the WHY: with an empty store, Balanced/Frequent rank identically. Closes the FinderTracker gap the harvest plan flagged (fork's was dead code using the wrong signal). Bead **jrc** (new), depends on closed spike **bf7**.
+
+**Built:**
+- `HauntsCore/NavigationFilter.swift` — PURE, AppKit-free policy: `normalize` (trim + strip trailing slash so `/a/b/` and `/a/b` dedupe) and `shouldRecord` (skip any `Library` component → covers `/Library` + `~/Library`, `/Applications`, dotfile components, root). 13 unit tests.
+- `HauntsCore/FinderTracker.swift` — `@MainActor` tracker. Scheduled `Timer` (2s) polls `target of front Finder window` via `NSAppleScript` on the **main thread** (NOT `insertion location` — bf7: diverges to a selected subfolder). normalize → dedupe vs lastPath → filter → `AppState.trackNavigation` on a real change. Errors / no-window / consent-denied (-1743) → `nil`, dropped silently, lastPath retained — never crashes or busy-spins. `start()` idempotent + immediate first read; `stop()` = no timer, no Apple Events. `poll` injectable so 9 dedupe/filter/lifecycle tests run **headless on CI** (CI cannot exercise the real Apple Events poll — needs GUI + Finder + consent). **Tests 122 → 144.**
+- Wiring: `AppDelegate` owns a `FinderTracker`; `syncNavigationTracking()` starts it only when `Settings.learnFromNavigation` is true, stops when false. The Ranking-tab toggle now posts `.zffToggleLearnFromNavigation` → AppDelegate starts/stops live.
+- `Info.plist` (NSAppleEventsUsageDescription + CFBundleIdentifier `app.gethaunts.zforfinder` + LSUIElement) embedded into the binary's `__TEXT,__info_plist` section via linker `-sectcreate` (Package.swift) so TCC shows a real consent string for the unbundled binary.
+
+**VERIFIED LIVE on this machine (pkill→background-launch pattern; real `~/Library/Application Support/Haunts/frecency.json`):**
+- Toggle ON → navigated Finder; `zff-verify-haunts`, `code/zff-nav-a`, `Documents/zff-nav-b`, `Downloads` each landed as records within ~2–3s of the folder change. `/Applications` navigated-to but **correctly NOT recorded** (filter works live). No Automation consent dialog blocked it — already granted for this binary; record landing proves the Apple Event succeeded.
+- Toggle OFF → log `navigation tracking OFF`; navigated 3 folders → store did **not** grow (no polling). ON again → records resume. (OFF tested by setting the default + relaunch; the live in-app toggle path is the notification wiring above + the `start/stop` unit tests.)
+- Store reset to `[]` and test folders removed afterward so real ranking isn't polluted by fixtures.
+
+**Honest partials / findings:**
+- **Palette screenshot inconclusive** — `screencapture` returned black (controlling process lacks Screen Recording consent; same limitation as Session 4). "Visits surface in the palette" is evidenced instead by (a) records landing in the exact store the palette reads + (b) unit test `trackNavigationRecordsAndSurfaces` proving `state.index` (palette source) contains a tracked path after `trackNavigation`. Not claiming I eyeballed it in the palette.
+- **UserDefaults domain shift:** embedding `CFBundleIdentifier` moved `UserDefaults.standard` from the `zforfinder` domain (exec name → old `~/Library/Preferences/zforfinder.plist`) to `app.gethaunts.zforfinder`. Pre-release so no real users affected, and a proper `.app` (bead v3n) sets the bundle id anyway, but it orphans prior dev-persisted settings. Surfaced via an NSLog of the resolved toggle state (kept — useful).
+- **Consent attribution** for the unbundled binary differs from a signed `.app` (the prompt attributes to the running process). Proper bundle/signing = bead v3n, out of scope here.
+- CI cannot exercise the Apple Events poll — only the pure filter + dedupe + lifecycle (unit-tested). No faked integration test.
