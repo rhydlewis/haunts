@@ -10,7 +10,7 @@
     <key>NSAppleEventsUsageDescription</key>
     <string>Haunts reads the current folder of your front Finder window to learn the places you navigate to, so they rank higher when you search.</string>
     <key>CFBundleIdentifier</key>
-    <string>app.gethaunts.zforfinder</string>
+    <string>app.gethaunts.Haunts</string>
     <key>CFBundleName</key>
     <string>Haunts</string>
     <key>LSUIElement</key>
