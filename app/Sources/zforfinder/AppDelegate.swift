@@ -62,7 +62,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     /// Start or stop the FinderTracker to match the persisted Learn-from-navigation
     /// setting. Off means no polling at all.
     @MainActor private func syncNavigationTracking() {
-        if Settings.learnFromNavigation {
+        let on = Settings.learnFromNavigation
+        NSLog("Haunts: navigation tracking \(on ? "ON" : "OFF")")
+        if on {
             finderTracker.start(appState: state)
         } else {
             finderTracker.stop()
