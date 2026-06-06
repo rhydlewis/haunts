@@ -20,7 +20,7 @@ let package = Package(
         // App shell: @MainActor state + impure adapters (git scan, Spotlight, open).
         .executableTarget(
             name: "zforfinder",
-            dependencies: ["ZFFEngine"],
+            dependencies: ["ZFFEngine", "HauntsAdapters"],
             path: "Sources/zforfinder"
         ),
         .testTarget(

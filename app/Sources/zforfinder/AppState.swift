@@ -1,6 +1,7 @@
 import SwiftUI
 import Foundation
 import ZFFEngine
+import HauntsAdapters
 
 let HOME = NSHomeDirectory()
 
@@ -20,6 +21,14 @@ final class AppState: ObservableObject {
     private var repos: Set<String> = []
     private var rootCache: [String: String] = [:]
     private var metaQuery: NSMetadataQuery?
+
+    // Persistence + signal sources (Session 2). Store is empty until live navigation
+    // (FinderTracker) populates it, so this wiring is plumbing — no ranking change yet.
+    private let store = Store.defaultStore()
+    private let editorAdapters: [EditorAdapter] = [ZedAdapter(), XcodeAdapter(), PyCharmAdapter()]
+    /// Index-build blend. Balanced is the shipped default; a future Preferences toggle
+    /// can expose Frequent (z-style). See `RankingMode`.
+    private let rankingMode: RankingMode = .default
 
     /// PURE computed view of index+query — always fresh during render (no stale
     /// results), deterministic (stable tiebreak) so display == what opens.
@@ -53,8 +62,16 @@ final class AppState: ObservableObject {
             let mt = gitActivity(repo)
             bump(&seed, repo, "git", Scoring.decay(Scoring.ageDays(since: mt, now: now)))
         }
-        index = seed.values.sorted(by: Ranker.rankOrder)   // warm immediately from git
-        runMetadata(seed: seed)                            // then enrich with Spotlight signal
+        // Editor recent-folders signal (Zed/Xcode/PyCharm), rolled up to git roots.
+        for adapter in editorAdapters {
+            guard let folders = try? adapter.recentFolders() else { continue }
+            for url in folders { bump(&seed, gitRoot(url.path), "editor", 0.5) }
+        }
+        let records = store.load()
+        // warm immediately: git+editor blended with any persisted visits (empty for now)
+        index = Frecency.blend(discovered: Array(seed.values), records: records,
+                               mode: rankingMode, repos: repos, home: HOME)
+        runMetadata(seed: seed, records: records)          // then enrich with Spotlight signal
     }
 
     private func bump(_ map: inout [String: Place], _ path: String, _ source: String, _ w: Double) {
@@ -99,7 +116,7 @@ final class AppState: ObservableObject {
         return root
     }
 
-    private func runMetadata(seed: [String: Place]) {
+    private func runMetadata(seed: [String: Place], records: [PlaceRecord]) {
         let q = NSMetadataQuery()
         q.predicate = NSPredicate(format: "kMDItemLastUsedDate >= %@",
                                   Date(timeIntervalSinceNow: -90 * 86400) as NSDate)
@@ -129,7 +146,8 @@ final class AppState: ObservableObject {
                 }
                 q.stop()
                 if let token { NotificationCenter.default.removeObserver(token) }
-                self.index = map.values.sorted(by: Ranker.rankOrder)
+                self.index = Frecency.blend(discovered: Array(map.values), records: records,
+                                            mode: self.rankingMode, repos: self.repos, home: HOME)
             }
         }
         metaQuery = q
