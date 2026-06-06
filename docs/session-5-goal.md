@@ -1,12 +1,12 @@
 GOAL: Add live Finder-navigation tracking to Haunts (a macOS menu-bar folder navigator) so it learns where you work and ranking reflects it. Repo: /Users/rhyd/code/z-for-finder (Swift package in app/). Work test-first; commit small increments to main; end on GREEN CI.
 
-WHY: the Store is empty today, so Balanced/Frequent rank identically. This fills it from real navigation — the "learns where you work" promise.
+WHY: the Store is empty, so Balanced/Frequent rank identically. This fills it from real navigation.
 
 READ FIRST:
 - context.md — esp. the closed-risk entry on Finder Apple-Events tracking (validated approach + caveats).
-- spikes/finder-track-probe.swift — the VALIDATED probe (NSAppleScript polling Finder); base the tracker's script on it.
+- spikes/finder-track-probe.swift — VALIDATED probe; base the tracker's NSAppleScript on it.
 - docs/harvest-plan.md (FinderTracker = REWRITE + RE-VALIDATE); `bd show z-for-finder-bf7`.
-- Reference only (dead code, used the WRONG signal): the fork's HauntsCore/FinderTracker.swift (path in docs/harvest-plan.md).
+- Reference only (dead code, WRONG signal): fork's FinderTracker.swift (path in harvest-plan).
 
 ALREADY DONE (use, don't rebuild): AppState.trackNavigation(path:) records a visit + re-blends (tested); Settings.learnFromNavigation persists the toggle; the Ranking tab writes it.
 
@@ -27,7 +27,7 @@ GOTCHAS (don't relearn the hard way):
 
 CI CANNOT TEST THIS: the Apple Events poll needs a GUI + Finder + consent; it won't run on CI. So unit-test the PURE bits (should-record filter, dedupe) and VERIFY live behaviour manually (below). Do NOT fake an integration test.
 
-DONE = each TRUE + VERIFIED: toggle ON → navigating Finder records visits to ~/Library/Application Support/Haunts/frecency.json within ~2s and visited folders rise in the palette (⌃⌘Space); toggle OFF → no new records, no polling; consent-denied/no-window doesn't crash; pure filter+dedupe unit-tested; all 122 prior tests pass; `swift build` + `swift test --package-path app` green; pushed to main; CI green.
+DONE = each TRUE + VERIFIED: toggle ON → navigating Finder records visits to the frecency.json store within ~2s and visited folders rise in the palette (⌃⌘Space); toggle OFF → no new records, no polling; consent-denied/no-window doesn't crash; pure filter+dedupe unit-tested; all 122 prior tests pass; `swift build` + `swift test --package-path app` green; pushed to main; CI green.
 
 VERIFY, DON'T ASSERT: swift test each step; then run the app (pkill+background), toggle Learn-from-navigation ON, navigate a few Finder folders, confirm records land in frecency.json AND surface in the palette; toggle OFF → polling stops. Capture what you saw; `gh run watch` for green. Then note progress in context.md + beads bf7/4g9.
 
