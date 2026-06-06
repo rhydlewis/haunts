@@ -208,3 +208,28 @@ The Stop-hook correctly flagged that the first pass *asserted* the interactive i
   - `SMAppService.status: notFound → register() OK → enabled → unregister() OK` — **launch-at-login actually registers from the bundle**, reaching `.enabled` (not merely `.requiresApproval`), even UNSIGNED on this machine. This is the exact call the Preferences toggle makes (`LaunchAtLogin.set(true)`). State restored (unregistered) afterwards.
 
 **Still NOT visually eyeballed (locked screen, honest):** the *pixels* of the menu-bar ghost glyph, the palette opening on the keypress, the ember pill colour, and the Finder icon render. Each is backed by objective evidence (status-item+hotkey setup ran without error; AccentColor=#E8732C confirmed in Assets.car by assetutil + read at runtime; icns content extracted and confirmed ember-ghost). A user on an unlocked desktop should still give Preferences a 10-second glance to confirm the pill colour — but every DONE item now has runtime or asset-level verification, not an assertion.
+
+## Session 8 — SIGNED + NOTARIZED + STAPLED Haunts.app (2026-06-06, on main, CI green)
+Made `build/Haunts.app` Gatekeeper-clean on other Macs — the gate in front of Sparkle (7hr), login-at-startup survival (2iw), and the release pipeline (ge2). Bead **4fd**. Reused the existing Developer ID setup from `../lpx-explorer` (same Apple account / Team `87A97X8DAG`); created NO new credentials. Tests stayed 164 green; no engine changes.
+
+**What shipped:**
+- `app/Entitlements.plist` — hardened-runtime entitlements for a Developer-ID (NON-sandboxed) app: the single key `com.apple.security.automation.apple-events=true`, which the hardened runtime requires for the FinderTracker Apple Event (`target of front Finder window`); pairs with `NSAppleEventsUsageDescription`. Deliberately NO App Sandbox (would block the editor/shell warm-seed reads). Kept COMMENT-FREE — codesign's AMFI plist parser rejects XML comments (hit `AMFIUnserializeXML: syntax error` until the comments came out).
+- `scripts/sign-notarize.sh` — runs AFTER `build-app.sh`: signs (`--force --options runtime --timestamp --entitlements app/Entitlements.plist`), verifies (`codesign --verify --strict --deep` + asserts the runtime flag + the apple-events entitlement are present), notarizes (`ditto` zip → `notarytool submit --wait` → must be `Accepted`, else fetches the notary log and fails), staples, then `spctl --assess`. `--sign-only` for an offline sign+verify. Creds read from keychain (account `lpx-explorer`, services `APPLE_ID`/`APPLE_PASSWORD`) into vars, NEVER printed. Has the inside-out Sparkle nested-signing incantation as a commented placeholder for 7hr.
+- **NOT wired into CI** — notarization needs the keychain creds + network and is a LOCAL release step; `ci.yml` stays build+test only (confirmed: no notar/codesign/APPLE_ refs).
+
+**Two real gotchas hit + fixed (both in the script):**
+- **Ambiguous identity:** this Mac has TWO Developer ID certs with the identical name (duplicate import, same Team/expiry), so `codesign --sign "<name>"` errored `ambiguous`. Fixed: resolve the name to its SHA-1 via `find-identity` and sign by hash.
+- **`pipefail` + `grep -q` footgun:** `codesign -d … | grep -q` reported FAILURE on a match — `grep -q`'s early exit SIGPIPEs codesign, and `set -o pipefail` propagates the 141. Fixed: capture output to a var first, then grep.
+
+**VERIFIED end-to-end on this Mac (ran the script for real against Apple's notary service):**
+- `codesign --verify --strict --deep` → valid on disk + satisfies Designated Requirement.
+- Hardened runtime: `flags=0x10000(runtime)`; entitlement `com.apple.security.automation.apple-events` present in the signature.
+- **Notarization: `status: Accepted`**, submission id `0e1800e7-2a38-4df2-b0be-322c727d55d5` (real Apple verdict, not asserted).
+- `stapler staple` + `stapler validate` → "The validate action worked!"
+- `spctl --assess --type execute` → **accepted, `source=Notarized Developer ID`**.
+- Signed bundle still launches: ran the bundled Mach-O — stays alive, logs `navigation tracking ON` (runs after status-item + hotkey setup), no `failed to register hotkey` → menu-bar + global ⌃⌘Space register fine under the signature. `--diagnostics` against the signed bundle resolves the real Info.plist + `SMAppService.register()→enabled`.
+- **Apple Events / Finder consent NOT broken by signing (the key gotcha):** with the signed app running, drove Finder to a unique test folder + `~/Downloads`; both landed in `~/Library/Application Support/Haunts/frecency.json`, and the tracker's exact query (`POSIX path of (target of front Finder window)`) returned the test path. Records can only land if the Apple Event succeeds (consent granted to the signed identity; no `-1743`). Test fixtures (folder + the 3 fixture records) cleaned up afterwards.
+  - *Footgun noted:* the store writes JSON with escaped forward slashes (`\/`), so `grep -F "/abs/path"` gives FALSE NEGATIVES against it — verify store contents with a JSON parser, not grep.
+- 164 tests green (`swift test --package-path app`).
+
+**Release usage:** `scripts/build-app.sh && scripts/sign-notarize.sh` → a distributable `build/Haunts.app`. (DMG packaging is ge2; Sparkle nested-signing is 7hr — placeholder already in the script.)
