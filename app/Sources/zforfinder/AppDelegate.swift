@@ -42,6 +42,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 let mode: OpenMode = event.modifierFlags.contains(.command) ? .editor
                     : event.modifierFlags.contains(.control) ? .terminal : .finder
                 self.state.activate(mode); self.hide(); return nil
+            case kVK_Delete:
+                // ⌘⌫ forgets the selected row. Plain ⌫ must pass through so it still
+                // edits the query text. (Distinct from ↩/⌘↩/⌃↩/Esc/↑↓.)
+                guard event.modifierFlags.contains(.command) else { return event }
+                self.forgetSelected(); return nil
             default:
                 return event   // let the text field handle typing
             }
@@ -125,6 +130,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     @MainActor private func hide() {
         panel.orderOut(nil)
     }
+    /// Forget the currently-selected palette row (⌘⌫): drop it from the learned
+    /// store and the live index so the row disappears immediately.
+    @MainActor private func forgetSelected() {
+        let results = state.results
+        guard results.indices.contains(state.selection) else { return }
+        state.forget(path: results[state.selection].path)
+    }
+
     @MainActor @objc private func rebuildIndex() { state.rebuild() }
     @objc private func quit() { NSApp.terminate(nil) }
 

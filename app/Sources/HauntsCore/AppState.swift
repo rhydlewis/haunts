@@ -21,10 +21,13 @@ public final class AppState: ObservableObject {
     private var repos: Set<String> = []
     private var rootCache: [String: String] = [:]
     private var metaQuery: NSMetadataQuery?
-    private var lastDiscovered: [Place] = []       // cached scan result for live re-blend
+    private var lastDiscovered: [Place] = []       // warm-seeded scan result for live re-blend
+    /// folder → (source name → summed raw weight); fed to `WarmSeed.blend`.
+    private var sourceWeights: [String: [String: Double]] = [:]
 
     private let store: Store
     private let editorAdapters: [EditorAdapter]
+    private let shellHistory: ShellHistorySource
 
     /// Index-build blend, read live from `Settings` so the Ranking tab can change it.
     /// Balanced is the shipped default; Preferences exposes Balanced/Frequent.
@@ -36,10 +39,12 @@ public final class AppState: ObservableObject {
 
     public init(
         store: Store = .defaultStore(),
-        adapters: [EditorAdapter] = [ZedAdapter(), XcodeAdapter(), PyCharmAdapter()]
+        adapters: [EditorAdapter] = [ZedAdapter(), XcodeAdapter(), PyCharmAdapter()],
+        shellHistory: ShellHistorySource = ShellHistorySource()
     ) {
         self.store = store
         self.editorAdapters = adapters
+        self.shellHistory = shellHistory
     }
 
     /// PURE computed view of index+query — always fresh during render, deterministic.
@@ -64,24 +69,41 @@ public final class AppState: ObservableObject {
     }
 
     // MARK: index build
+    /// Build the DAY-ONE warm index from signals that already exist on the machine —
+    /// git repos, shell history, IDE recents, Spotlight metadata — blended by
+    /// `WarmSeed` (per-source normalization + diversity), then layered with any
+    /// persisted visit history. Correct on first launch, before any navigation.
     public func rebuild() {
-        var seed: [String: Place] = [:]
+        sourceWeights = [:]
+        rootCache = [:]
         repos = discoverRepos()
         let now = Date().timeIntervalSince1970
+
+        // git: weight each repo by recency of .git activity.
         for repo in repos {
             let mt = gitActivity(repo)
-            bump(&seed, repo, "git", Scoring.decay(Scoring.ageDays(since: mt, now: now)))
+            addWeight(repo, "git", Scoring.decay(Scoring.ageDays(since: mt, now: now)))
         }
-        // Editor recent-folders signal (configured adapters), rolled up to git roots.
+        // editor recent-folders (configured adapters), rolled up to git roots.
         for adapter in editorAdapters {
             guard let folders = try? adapter.recentFolders() else { continue }
-            for url in folders { bump(&seed, gitRoot(url.path), "editor", 0.5) }
+            for url in folders { addWeight(gitRoot(url.path), "editor", 0.5) }
         }
-        lastDiscovered = Array(seed.values)
-        index = Frecency.blend(discovered: lastDiscovered, records: store.load(),
-                               mode: rankingMode, subfolderFrecency: subfolderFrecency,
-                               minVisitCount: minVisitCount, repos: repos, home: HOME)
-        runMetadata(seed: seed)                            // then enrich with Spotlight signal
+        // shell history: cd/path targets → counts, resolved to dirs and rolled up.
+        for (raw, count) in shellHistory.paths(home: HOME) {
+            guard let folder = resolveFolder(raw) else { continue }
+            addWeight(gitRoot(folder), "shell", Double(count))
+        }
+
+        warmSeedAndBlend()      // synchronous warm index from git+shell+editor…
+        runMetadata()           // …then enrich asynchronously with the Spotlight signal
+    }
+
+    /// Recompute `lastDiscovered` from `sourceWeights` via the warm-seed blend, then
+    /// layer in visit history. Called on rebuild and whenever a source updates (meta).
+    private func warmSeedAndBlend() {
+        lastDiscovered = WarmSeed.blend(sources: sourceWeights, home: HOME)
+        reblend()
     }
 
     /// Record a live navigation visit and re-blend immediately (used by FinderTracker).
@@ -106,9 +128,35 @@ public final class AppState: ObservableObject {
         reblend()
     }
 
-    private func bump(_ map: inout [String: Place], _ path: String, _ source: String, _ w: Double) {
-        if var pl = map[path] { pl.score += w; pl.sources.insert(source); map[path] = pl }
-        else { map[path] = Place(path: path, score: w, sources: [source]) }
+    /// Forget a single learned folder: drop its visit records from the store AND
+    /// remove it from the in-memory discovered set so the palette row vanishes now,
+    /// even when a scan source (git/shell/meta) also surfaced it. A later full
+    /// rebuild may re-learn it — this is delete, not a permanent denylist.
+    public func forget(path: String) {
+        store.forget(path: path)
+        lastDiscovered.removeAll { $0.path == path }
+        sourceWeights[path] = nil
+        reblend()
+        let n = results.count
+        if selection >= n { selection = max(0, n - 1) }
+    }
+
+    private func addWeight(_ folder: String, _ source: String, _ w: Double) {
+        sourceWeights[folder, default: [:]][source, default: 0] += w
+    }
+
+    /// Resolve a raw shell-history path to a real directory under `HOME`, or nil to
+    /// skip it: expand to a directory (files fall back to their parent), reject
+    /// anything outside home, the home root itself, Library, and hidden components.
+    private func resolveFolder(_ raw: String) -> String? {
+        let fm = FileManager.default
+        var isDir: ObjCBool = false
+        guard fm.fileExists(atPath: raw, isDirectory: &isDir) else { return nil }
+        let dir = isDir.boolValue ? raw : (raw as NSString).deletingLastPathComponent
+        let std = (dir as NSString).standardizingPath
+        guard std.hasPrefix(HOME), std != HOME else { return nil }
+        if std.contains("/Library/") || std.contains("/.") { return nil }
+        return std
     }
 
     private func discoverRepos() -> Set<String> {
@@ -147,7 +195,7 @@ public final class AppState: ObservableObject {
         return root
     }
 
-    private func runMetadata(seed: [String: Place]) {
+    private func runMetadata() {
         let q = NSMetadataQuery()
         q.predicate = NSPredicate(format: "kMDItemLastUsedDate >= %@",
                                   Date(timeIntervalSinceNow: -90 * 86400) as NSDate)
@@ -159,7 +207,6 @@ public final class AppState: ObservableObject {
             MainActor.assumeIsolated {
                 guard let self else { return }
                 q.disableUpdates()
-                var map = seed
                 let now = Date()
                 for i in 0..<q.resultCount {
                     guard let it = q.result(at: i) as? NSMetadataItem,
@@ -170,15 +217,14 @@ public final class AppState: ObservableObject {
                     let last = it.value(forAttribute: "kMDItemLastUsedDate") as? Date
                     let age = last.map { max(0, now.timeIntervalSince($0) / 86400) } ?? 90
                     let use = (it.value(forAttribute: "kMDItemUseCount") as? NSNumber)?.doubleValue ?? 1
-                    var w = Scoring.metaWeight(ageDays: age, useCount: use)
-                    let root = self.gitRoot(dir)
-                    if Rollup.isTransient(root, home: HOME) { w *= Scoring.transientMultiplier }
-                    self.bump(&map, root, "meta", w)
+                    // Raw meta weight; WarmSeed normalizes within the source and applies
+                    // the transient penalty uniformly, so no pre-penalty here.
+                    let w = Scoring.metaWeight(ageDays: age, useCount: use)
+                    self.addWeight(self.gitRoot(dir), "meta", w)
                 }
                 q.stop()
                 if let token { NotificationCenter.default.removeObserver(token) }
-                self.lastDiscovered = Array(map.values)
-                self.reblend()
+                self.warmSeedAndBlend()
             }
         }
         metaQuery = q

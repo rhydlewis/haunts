@@ -102,6 +102,15 @@ public struct Store: Sendable {
         write([])
     }
 
+    /// Forget a single folder: drop every record at `path` AND under it (so visits
+    /// to subfolders that rolled up into a row are forgotten too). Backs the palette's
+    /// ⌘⌫ "forget this folder" shortcut. Never throws.
+    public func forget(path: String) {
+        let prefix = path + "/"
+        let kept = load().filter { $0.path != path && !$0.path.hasPrefix(prefix) }
+        write(kept)
+    }
+
     // MARK: - Merge (rebuild seed)
 
     /// Merge store records with freshly-discovered `[Place]` and return a ranked list.

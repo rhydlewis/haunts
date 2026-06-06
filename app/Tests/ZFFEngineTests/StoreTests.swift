@@ -438,3 +438,44 @@ struct StoreResetTests {
         #expect(store.load().isEmpty)
     }
 }
+
+@Suite("StoreForgetTests")
+struct StoreForgetTests {
+
+    // Forgetting a path removes its records but leaves unrelated ones.
+    @Test func forgetRemovesExactPathOnly() {
+        let (store, _, cleanup) = makeTempStore()
+        defer { cleanup() }
+        store.record(path: URL(fileURLWithPath: "/a/proj"))
+        store.record(path: URL(fileURLWithPath: "/a/proj"))
+        store.record(path: URL(fileURLWithPath: "/a/other"))
+
+        store.forget(path: "/a/proj")
+        let paths = store.load().map(\.path)
+        #expect(!paths.contains("/a/proj"))
+        #expect(paths.contains("/a/other"))
+    }
+
+    // Forgetting a folder also forgets records under it (subfolders that rolled up).
+    @Test func forgetRemovesSubpaths() {
+        let (store, _, cleanup) = makeTempStore()
+        defer { cleanup() }
+        store.record(path: URL(fileURLWithPath: "/a/proj"))
+        store.record(path: URL(fileURLWithPath: "/a/proj/src/deep"))
+        store.record(path: URL(fileURLWithPath: "/a/projector"))   // sibling, NOT under /a/proj
+
+        store.forget(path: "/a/proj")
+        let paths = store.load().map(\.path)
+        #expect(!paths.contains { $0 == "/a/proj" || $0.hasPrefix("/a/proj/") })
+        #expect(paths.contains("/a/projector"), "a path with the same prefix string but not under the folder must survive")
+    }
+
+    // Forgetting an absent path is a no-op (never throws).
+    @Test func forgetUnknownPathIsNoOp() {
+        let (store, _, cleanup) = makeTempStore()
+        defer { cleanup() }
+        store.record(path: URL(fileURLWithPath: "/a/keep"))
+        store.forget(path: "/a/nope")
+        #expect(store.load().map(\.path) == ["/a/keep"])
+    }
+}

@@ -22,6 +22,20 @@ struct TrackNavigationSinkTests {
         #expect(state.index.contains { $0.path == p })
     }
 
+    // Forgetting a tracked folder removes it from BOTH the store and the live index.
+    @Test @MainActor func forgetRemovesFromStoreAndIndex() {
+        let (store, cleanup) = tempStore(); defer { cleanup() }
+        let state = AppState(store: store, adapters: [])
+        state.rebuild()
+        let p = "/tmp/zff-forget-fixture"
+        state.trackNavigation(path: URL(fileURLWithPath: p))
+        #expect(state.index.contains { $0.path == p })
+
+        state.forget(path: p)
+        #expect(!store.load().contains { $0.path == p }, "records must be gone from the store")
+        #expect(!state.index.contains { $0.path == p }, "row must be gone from the live index")
+    }
+
     // Repeated navigation accumulates visit records.
     @Test @MainActor func repeatedNavigationAccumulatesVisits() {
         let (store, cleanup) = tempStore(); defer { cleanup() }
