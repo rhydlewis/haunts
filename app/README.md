@@ -1,33 +1,39 @@
-# z for Finder — app (thin vertical slice)
+# Haunts — app (Swift package)
 
-A runnable proof of the spine: global hotkey → floating palette → frecency-ranked places → open. Built from the validated spikes.
+The macOS app. This is the developer/build readme; see the repo-root `README.md`
+for the product overview.
 
-## Run
+## Build · test · run
 ```bash
 cd app
-swift run            # or: ./.build/debug/zforfinder
+swift build
+swift test            # Swift Testing — 164 tests
+swift run zforfinder  # menu-bar app; press ⌃⌘Space to summon the palette
 ```
-A `⌁` icon appears in the menu bar. Press **⌃⌘Space** to summon the palette. Quit from the menu-bar menu.
-
-## What works (this slice)
-- **⌃⌘Space** global hotkey (Carbon `RegisterEventHotKey` — *no* Accessibility/Input-Monitoring permission needed).
-- **Warm on launch**: index seeded from git repos under `~/code` + Spotlight frecency (`NSMetadataQuery`, recency × √useCount, git-root rollup, transient down-weight — ports Spike 2).
-- **Type** to fuzzy-filter · **↑/↓** to move · **↩** open in Finder · **⌘↩** VS Code · **⌃↩** Terminal · **Esc / click-away** to dismiss.
-- Borderless non-activating `NSPanel` (AppKit) hosting SwiftUI content via `NSHostingView`.
-
-## Known limitations (deliberate — it's a slice)
-- Swift engine seeds from **git + Spotlight only**. The full Spike-3b blend (shell history, JetBrains/Sublime recents, source-diversity weighting) is not yet ported — see `../spikes/seed-prototype.py`.
-- Editor action hardcoded to VS Code bundle id (`com.microsoft.VSCode`); silently no-ops if absent.
-- Runs as an unbundled binary from the terminal — **not** yet a signed/notarized `.app` with Sparkle.
-- On summon it calls `NSApp.activate` for reliable text focus; a fully non-activating flow can be refined later.
-- No live-activity learning yet (that's bead `z-for-finder-bf7`, Spike 3).
+A ghost glyph appears in the menu bar (no Dock icon). **Settings…** is on the
+menu-bar menu. A proper double-clickable, signed `Haunts.app` bundle is bead `v3n`
+(this raw `swift run` binary is for development).
 
 ## Architecture
-| File | Role |
+Four targets, layered so the ranking logic is pure and unit-testable:
+
+| Target | Role |
 |---|---|
-| `main.swift` | Agent-app bootstrap (`.accessory` policy) |
-| `AppDelegate.swift` | Status item, hotkey, key routing, show/hide |
-| `HotKey.swift` | Carbon global hotkey (permission-free) |
-| `FloatingPanel.swift` | Spotlight-style non-activating `NSPanel` |
-| `AppState.swift` | Frecency engine (Spike 2 port) + palette state |
-| `PaletteView.swift` | SwiftUI search field + results list |
+| **ZFFEngine** | Pure ranking/scoring — `Place`, `Matcher`, `Ranker`, `Scoring`, `Rollup`, `Store`, `RankingMode`/`Frecency`, `WarmSeed`. No AppKit/SwiftUI; fully unit-tested. |
+| **HauntsAdapters** | Signal sources: editor recents (Zed/Xcode/PyCharm) + shell history (fish/zsh). |
+| **HauntsCore** | App state + config: `AppState` (`@MainActor`), `Settings`, `FinderTracker`, `OpenMode`. Testable (the executable can't be imported by tests). |
+| **zforfinder** (executable) | App shell: `AppDelegate` (status item, global hotkey, palette panel), `PaletteView`, `FloatingPanel`, `HotKey`, `PreferencesView`, `GhostIcon`, `main`. |
+
+**Rule:** keep `ZFFEngine` pure (no AppKit/SwiftUI/file-I/O). Impure work — Spotlight,
+git scan, Apple Events, file reads, `open` — lives in the adapters / `HauntsCore` /
+the shell and passes plain data into the engine.
+
+## How it works (one paragraph)
+On launch the app builds a **warm** index from signals that already exist (git repos,
+shell history, IDE recents, Spotlight usage), blended with per-source normalization +
+a source-diversity bonus. Opt-in `FinderTracker` then learns from live Finder
+navigation. `⌃⌘Space` opens a non-activating palette; type to subsequence-filter;
+`↩`/`⌘↩`/`⌃↩` open in Finder/editor/terminal; `⌘⌫` forgets a row.
+
+> Note: the SwiftPM target is named `zforfinder` (historical); the product and the
+> shipped bundle are **Haunts**. GitHub repo: `rhydlewis/haunts`.
