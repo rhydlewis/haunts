@@ -1,6 +1,6 @@
 GOAL: Finish Haunts' ranking brain (Session 6): port the warm-seed blend so the app is correct on DAY ONE (before any navigation), and add a palette shortcut to forget one learned folder. Repo: /Users/rhyd/code/z-for-finder (Swift package in app/). Test-first; small commits to main; end on GREEN CI.
 
-WHY: the index sums RAW per-source weights today, so one high-volume source can dominate, and it has no shell-history signal and no "multiple sources agree" boost. A spike proved a better blend = bead 4g9 (the differentiation). Plus 9fs: prune a bad learned folder from the palette.
+WHY: the index sums RAW per-source weights, so one source can dominate; it has no shell-history signal and no multi-source-agreement boost. A spike proved a better blend (4g9, the differentiation). Plus 9fs: prune a bad learned folder.
 
 READ FIRST:
 - spikes/seed-prototype.py — VALIDATED prototype; the SPEC. Read its comments/output for the exact formulas: per-source normalization, source-diversity weighting, and the source set (git, shell history, IDE recents, Spotlight meta).
