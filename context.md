@@ -114,3 +114,27 @@ mdls -name kMDItemUseCount ~/Documents/some.pdf  # "could not find" — CLI brok
 # The frequency signal source:
 ls ~/Library/Application\ Support/com.apple.sharedfilelist/
 ```
+
+## Session 4 — Preferences UI BUILT & WIRED (2026-06-06, on main, CI target green)
+Built the full **Haunts Settings** window matching `docs/preferences-mockup.html`.
+
+**Window:** a titled `NSWindow` hosting `NSHostingView(PreferencesView)` (NOT the SwiftUI `Settings` scene — this is an AppKit `.accessory` lifecycle). Opened from a new **Settings…** status-menu item and ⌘,. `PreferencesView` = SwiftUI `TabView` (`.formStyle(.grouped)`) with 5 tabs: General · Ranking · Folders · Open With · About.
+
+**Wired (not just cosmetic):**
+- **Hotkey recorder** (General): captures a live chord via a local `NSEvent` monitor → persists `Settings.hotkeyKeyCode/hotkeyModifiers` → posts `.zffRemapHotKey` → `AppDelegate.registerHotKey()` re-registers Carbon hotkey. VERIFIED: rebound to ⌥⌘J, defaults wrote `38`/`2304`, and firing ⌥⌘J opened the palette.
+- **Appearance** segmented → `applyAppearance()` sets `NSApp.appearance`. VERIFIED: window flips light/dark live; `haunts.appearance` persists.
+- **Ranking mode** Balanced/Frequent → `Settings.rankingMode` + `AppState.applyRankingSettings()` (re-blend). `AppState.rankingMode/subfolderFrecency/minVisitCount` now read live from `Settings` (were hardcoded). VERIFIED: persists `frequent`, callout updates.
+- **Reset Learned Data…** → `NSAlert` → `AppState.resetLearnedData()` → `Store.reset()` (writes `[]`) + reblend. VERIFIED against the real `~/Library/Application Support/Haunts/frecency.json` (seeded 1 record → reset → `[]`).
+- **Folders**: scan-roots list (add/Choose…/remove/per-row depth stepper) editing `Settings.scanRoots`.
+- **Open With**: editor list (enable/reorder via `.onMove`/auto-detect) editing `Settings.editorTargets`; Terminal picker (`Settings.terminalTarget`, used by the ⌃↩ verb).
+- **Menu-bar glyph**: `"⌁"` replaced with the ghost as a **template `NSImage`** drawn from `docs/assets/menubar-ghost.svg` via `NSBezierPath` (`GhostIcon`, `isTemplate = true`). Renders crisp at 18px black-on-light / white-on-dark (verified by rendering the exact path standalone). About tab uses the same path with an ember gradient.
+
+**Settings additions** (Foundation-only, each round-trip+default tested in HauntsCore): `rankingMode`, `subfolderFrecency`, `minVisitCount`, `learnFromNavigation`, `appearance`, `launchAtLogin`, `refreshIntervalMinutes`, `terminalTarget` (+ terminal autodetect). Plus `Store.reset()`. **Tests 102 → 122.**
+
+**Honest partials:**
+- **Launch-at-login** uses `SMAppService.mainApp` but only registers from a signed `.app` bundle; from the SwiftPM debug binary it's a no-op (the preference still persists). Coded + caveated in `LaunchAtLogin.swift`.
+- **"Learn from navigation"** toggle persists `Settings.learnFromNavigation` only — the live `FinderTracker` is Session 5 (out of scope).
+- **⌘,** is on the status-menu item; for an `.accessory` app it only triggers app-wide when a Haunts window is key. The menu item is the primary path.
+- Live in-situ menu-bar screenshot of the glyph was blocked by this machine's multi-display + a fullscreen app owning the main Space (screencapture rect instability). Verified instead via the functional status menu (AX) + standalone render of the identical path. The glyph IS installed as a template image.
+
+**Verification env note:** GUI driving needed Accessibility + Screen Recording consent for the controlling process; once granted, drove the window via System Events and captured per-tab screenshots. SwiftUI's AX tree (`entire contents`) is flaky — clicking tabs by screen coordinate was more reliable.
