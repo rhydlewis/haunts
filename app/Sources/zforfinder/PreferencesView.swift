@@ -436,7 +436,7 @@ private struct AboutTab: View {
                 .frame(maxWidth: 380).padding(.top, 14)
 
             HStack(spacing: 8) {
-                Button { open("https://www.buymeacoffee.com/rhydlewis") } label: {
+                Button { open("https://www.buymeacoffee.com/rhyd") } label: {
                     Label("Buy me a coffee", systemImage: "cup.and.saucer.fill")
                 }
                 .buttonStyle(.borderedProminent).tint(.ember)
