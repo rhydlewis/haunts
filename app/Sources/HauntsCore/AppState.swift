@@ -28,6 +28,7 @@ public final class AppState: ObservableObject {
     private let store: Store
     private let editorAdapters: [EditorAdapter]
     private let shellHistory: ShellHistorySource
+    private let jumpSource: JumpSource
 
     /// Index-build blend, read live from `Settings` so the Ranking tab can change it.
     /// Balanced is the shipped default; Preferences exposes Balanced/Frequent.
@@ -40,11 +41,13 @@ public final class AppState: ObservableObject {
     public init(
         store: Store = .defaultStore(),
         adapters: [EditorAdapter] = [ZedAdapter(), XcodeAdapter(), PyCharmAdapter()],
-        shellHistory: ShellHistorySource = ShellHistorySource()
+        shellHistory: ShellHistorySource = ShellHistorySource(),
+        jumpSource: JumpSource = JumpSource()
     ) {
         self.store = store
         self.editorAdapters = adapters
         self.shellHistory = shellHistory
+        self.jumpSource = jumpSource
     }
 
     /// PURE computed view of index+query — always fresh during render, deterministic.
@@ -94,9 +97,15 @@ public final class AppState: ObservableObject {
             guard let folder = resolveFolder(raw) else { continue }
             addWeight(gitRoot(folder), "shell", Double(count))
         }
+        // jump databases (z/autojump text DBs): already-frecency-ranked folder scores.
+        for (raw, score) in jumpSource.weights() {
+            guard let folder = resolveFolder(raw) else { continue }
+            addWeight(gitRoot(folder), "jump", score)
+        }
 
-        warmSeedAndBlend()      // synchronous warm index from git+shell+editor…
+        warmSeedAndBlend()      // synchronous warm index from git+shell+editor+jump…
         runMetadata()           // …then enrich asynchronously with the Spotlight signal
+        runZoxide()             // …and (best-effort) with the zoxide CLI's frecency DB
     }
 
     /// Recompute `lastDiscovered` from `sourceWeights` via the warm-seed blend, then
@@ -241,6 +250,25 @@ public final class AppState: ObservableObject {
         }
         metaQuery = q
         q.start()
+    }
+
+    /// Best-effort zoxide enrichment. The `zoxide` CLI read is a blocking subprocess,
+    /// so it runs off the main actor (like Spotlight's async gather) and never blocks
+    /// launch; results fold into the "jump" source and trigger a re-blend.
+    private func runZoxide() {
+        let src = jumpSource
+        Task.detached {
+            let weights = src.zoxideWeights()
+            guard !weights.isEmpty else { return }
+            await MainActor.run { [weak self] in
+                guard let self else { return }
+                for (raw, score) in weights {
+                    guard let folder = self.resolveFolder(raw) else { continue }
+                    self.addWeight(self.gitRoot(folder), "jump", score)
+                }
+                self.warmSeedAndBlend()
+            }
+        }
     }
 
     // MARK: open

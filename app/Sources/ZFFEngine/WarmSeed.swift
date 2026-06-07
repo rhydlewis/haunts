@@ -20,9 +20,12 @@ import Foundation
 /// so there is no clock, filesystem, or hidden state here.
 public enum WarmSeed {
     /// Per-source trust. git / shell / editor / meta are first-class; unknown
-    /// sources default to 1.0 via the lookup below.
+    /// sources default to 1.0 via the lookup below. `jump` (zoxide/z/autojump) is
+    /// trusted slightly above the rest: those DBs are already deduped, scored, and
+    /// recency-aware — a curated mirror of Haunts' own frecency model, so a folder
+    /// they vote for is higher-confidence than one seen only in raw history.
     public static let defaultTrust: [String: Double] = [
-        "git": 1.0, "editor": 1.0, "shell": 1.0, "meta": 1.0,
+        "git": 1.0, "editor": 1.0, "shell": 1.0, "meta": 1.0, "jump": 1.2,
     ]
 
     /// Score added per *additional* distinct source (so a single-source folder gets
