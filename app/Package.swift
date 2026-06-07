@@ -4,6 +4,12 @@ import PackageDescription
 let package = Package(
     name: "zforfinder",
     platforms: [.macOS(.v14)],
+    dependencies: [
+        // Sparkle auto-updates (bead 7hr). Binary xcframework target; the
+        // Sparkle.framework is copied into Haunts.app/Contents/Frameworks by
+        // scripts/build-app.sh and nested-signed by scripts/sign-notarize.sh.
+        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.6.0"),
+    ],
     targets: [
         // Pure ranking/scoring engine — no AppKit/SwiftUI/metadata. Unit-tested.
         .target(
@@ -27,7 +33,10 @@ let package = Package(
         // App shell: AppDelegate, PaletteView, FloatingPanel, HotKey, main.
         .executableTarget(
             name: "zforfinder",
-            dependencies: ["ZFFEngine", "HauntsAdapters", "HauntsCore"],
+            dependencies: [
+                "ZFFEngine", "HauntsAdapters", "HauntsCore",
+                .product(name: "Sparkle", package: "Sparkle"),
+            ],
             path: "Sources/zforfinder",
             exclude: ["Info.plist"],
             // Embed Info.plist into __TEXT,__info_plist so TCC can read
@@ -39,6 +48,11 @@ let package = Package(
                     "-Xlinker", "__TEXT",
                     "-Xlinker", "__info_plist",
                     "-Xlinker", "Sources/zforfinder/Info.plist",
+                    // Find Sparkle.framework inside the assembled .app bundle at
+                    // Contents/Frameworks (build-app.sh copies it there). The
+                    // executable lives in Contents/MacOS, so ../Frameworks.
+                    "-Xlinker", "-rpath",
+                    "-Xlinker", "@executable_path/../Frameworks",
                 ])
             ]
         ),

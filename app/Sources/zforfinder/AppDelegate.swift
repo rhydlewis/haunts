@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 import Carbon.HIToolbox
 import HauntsCore
+import Sparkle
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var state: AppState!
@@ -11,6 +12,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var keyMonitor: Any?
     private var prefsWindowController: PreferencesWindowController?
     private let finderTracker = FinderTracker()
+
+    // Sparkle auto-updater (bead 7hr). Owns the update lifecycle; reads SUFeedURL
+    // + SUPublicEDKey from Info.plist at runtime. `startingUpdater: true` schedules
+    // background checks; the status-menu "Check for Updates…" item drives a manual
+    // check via its checkForUpdates(_:) action.
+    private var updaterController: SPUStandardUpdaterController!
 
     @MainActor
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -23,6 +30,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let host = NSHostingView(rootView: PaletteView().environmentObject(state))
         panel = FloatingPanel(contentView: host, size: NSSize(width: 640, height: 420))
         panel.delegate = self
+
+        // Start Sparkle before building the status menu so the "Check for
+        // Updates…" item can target the live updater.
+        updaterController = SPUStandardUpdaterController(startingUpdater: true,
+                                                        updaterDelegate: nil,
+                                                        userDriverDelegate: nil)
 
         setupStatusItem()
 
@@ -90,8 +103,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let settings = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
         let quit = NSMenuItem(title: "Quit Haunts", action: #selector(quit), keyEquivalent: "q")
         [open, rebuild, settings, quit].forEach { $0.target = self }
+        // Sparkle drives this one: its action + validateMenuItem live on the
+        // updater controller, not AppDelegate.
+        let checkUpdates = NSMenuItem(title: "Check for Updates…",
+                                      action: #selector(SPUStandardUpdaterController.checkForUpdates(_:)),
+                                      keyEquivalent: "")
+        checkUpdates.target = updaterController
         menu.addItem(open); menu.addItem(.separator())
         menu.addItem(rebuild); menu.addItem(settings)
+        menu.addItem(checkUpdates)
         menu.addItem(.separator()); menu.addItem(quit)
         statusItem.menu = menu
     }
