@@ -446,8 +446,8 @@ private struct AboutTab: View {
             }
             .padding(.top, 18)
 
-            Text("Made with care by Rhyd Lewis · © 2026")
-                .font(.caption).foregroundStyle(.secondary).padding(.top, 22)
+            Text("Made in Whitstable, UK by [Rhyd Lewis](https://rhydlewis.net)")
+                .font(.caption).foregroundStyle(.secondary).tint(.ember).padding(.top, 22)
 
             Spacer()
         }
