@@ -2,69 +2,41 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- Real bundle Info.plist for Haunts.app (assembled by scripts/build-app.sh).
-         The unbundled dev binary embeds a slimmer plist via linker -sectcreate
-         (app/Sources/zforfinder/Info.plist); this is the source of truth for the
-         packaged app. Bundle id MUST match the dev plist so UserDefaults Settings
-         don't shift domain a second time. -->
-    <key>CFBundleIdentifier</key>
-    <string>app.gethaunts.Haunts</string>
-    <key>CFBundleName</key>
-    <string>Haunts</string>
-    <key>CFBundleDisplayName</key>
-    <string>Haunts</string>
-    <key>CFBundleExecutable</key>
-    <string>Haunts</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleInfoDictionaryVersion</key>
-    <string>6.0</string>
-
-    <!-- Version — SINGLE SOURCE OF TRUTH for ge2 (release pipeline reads/bumps here).
-         PreferencesView's About tab reads these via Bundle.main. -->
-    <key>CFBundleShortVersionString</key>
-    <string>0.1.0</string>
-    <key>CFBundleVersion</key>
-    <string>1</string>
-
-    <!-- Menu-bar agent app: no Dock icon, no app-switcher entry. -->
-    <key>LSUIElement</key>
-    <true/>
-
-    <key>LSMinimumSystemVersion</key>
-    <string>14.0</string>
-
-    <!-- App icon (Haunts.icns in Contents/Resources). -->
-    <key>CFBundleIconFile</key>
-    <string>Haunts</string>
-
-    <!-- Ember brand accent. NSAccentColorName points at the AccentColor colorset
-         compiled into Assets.car — this is what finally tints the Preferences
-         selected-tab pill ember instead of system blue (bead qvg). -->
-    <key>NSAccentColorName</key>
-    <string>AccentColor</string>
-
-    <!-- TCC consent strings. -->
-    <key>NSAppleEventsUsageDescription</key>
-    <string>Haunts reads the current folder of your front Finder window to learn the places you navigate to, so they rank higher when you search.</string>
-    <key>NSFullDiskAccessUsageDescription</key>
-    <string>Haunts can read recent-folder signals from your editors to seed your most-used places. It never modifies files.</string>
-
-    <!-- Sparkle auto-updates (bead 7hr). SUFeedURL is the hosted appcast;
-         SUPublicEDKey is the EdDSA public half of the keypair whose PRIVATE key
-         lives in this build machine's login keychain — the SHARED Sparkle key
-         (default account) also used by flowcus-v2 + lpx-explorer. Updates are
-         accepted only if their signature verifies against this public key; a
-         tampered/unsigned update is rejected. Back up the shared private key. -->
-    <key>SUFeedURL</key>
-    <string>https://gethaunts.app/appcast.xml</string>
-    <key>SUPublicEDKey</key>
-    <string>K3ez3NH5DW5mbJbJcMWK5yvK5JYv7gjMowuMZsJwzf0=</string>
-
-    <key>NSHumanReadableCopyright</key>
-    <string>Copyright © 2026 Rhyd Lewis. All rights reserved.</string>
-
-    <key>NSHighResolutionCapable</key>
-    <true/>
+	<key>CFBundleDisplayName</key>
+	<string>Haunts</string>
+	<key>CFBundleExecutable</key>
+	<string>Haunts</string>
+	<key>CFBundleIconFile</key>
+	<string>Haunts</string>
+	<key>CFBundleIdentifier</key>
+	<string>app.gethaunts.Haunts</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Haunts</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.1.1</string>
+	<key>CFBundleVersion</key>
+	<string>2</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSAccentColorName</key>
+	<string>AccentColor</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Haunts reads the current folder of your front Finder window to learn the places you navigate to, so they rank higher when you search.</string>
+	<key>NSFullDiskAccessUsageDescription</key>
+	<string>Haunts can read recent-folder signals from your editors to seed your most-used places. It never modifies files.</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright © 2026 Rhyd Lewis. All rights reserved.</string>
+	<key>SUFeedURL</key>
+	<string>https://gethaunts.app/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>K3ez3NH5DW5mbJbJcMWK5yvK5JYv7gjMowuMZsJwzf0=</string>
 </dict>
 </plist>
