@@ -233,3 +233,16 @@ Made `build/Haunts.app` Gatekeeper-clean on other Macs — the gate in front of 
 - 164 tests green (`swift test --package-path app`).
 
 **Release usage:** `scripts/build-app.sh && scripts/sign-notarize.sh` → a distributable `build/Haunts.app`. (DMG packaging is ge2; Sparkle nested-signing is 7hr — placeholder already in the script.)
+
+## Session 9 — DEFAULT summon chord ⌃⌘Space → ⌥Space (2026-06-07, on main, CI green)
+Bead **8wa**. The shipped default ⌃⌘Space collided with macOS's Emoji & Symbols viewer, so a fresh user's first press popped the emoji picker, not Haunts. Flipped the DEFAULT only — anyone who rebound keeps their stored chord.
+
+**Change (one line of real logic):** `HauntsCore/Settings.swift` `defaultHotkeyModifiers` `256+4096` (⌃⌘ = 4352) → `2048` (optionKey = ⌥); `defaultHotkeyKeyCode` stays `49` (Space). The whole chain already reads `Settings.hotkey*` (AppDelegate.registerHotKey, the menu hint, the Preferences recorder all via `HotKeyUtils.displayString`), so the new default renders everywhere for free. Docs updated: root + app READMEs, run.sh comment, HotKeyUtils docstring. +3 Swift Testing cases in `SettingsTests.swift` (default = ⌥Space; fresh install resolves to ⌥Space; stored override still wins). **167 tests green.**
+
+**Why ⌥Space:** conventional launcher chord, clear of ALL enabled system symbolic hotkeys on this Mac (`defaults read com.apple.symbolichotkeys`: ⌘Space Spotlight, ⌃Space/⌃⌥Space input source, ⌃⌘Space emoji, ⌥⌘Space, arrows) and of Finder's ⌘⇧H Home (rejected earlier for exactly that). Known minor overlap: Alfred also defaults to ⌥Space — anticipated in the bead; Alfred users rebind either app. The instruction's ⌘⇧Space fallback was NOT needed: bare ⌥Space is not a system symbolic hotkey.
+
+**VERIFIED live (fresh-install state, on this Mac):**
+- Fresh launch registered ⌥Space — live status-menu hint read `Open  (⌥Space)`; zero `failed to register hotkey`.
+- Injected ⌥Space → zforfinder AX windows 0→1 (AXSystemDialog 640×420 = palette); Esc → 0; ⌃⌘Space → stayed 0 (Haunts ignores it; chord now free for the emoji viewer). User also confirmed all 5 checks by hand (menu hint, ⌥Space opens, ⌃⌘Space doesn't, Preferences shows ⌥Space, rebinding still works).
+
+**Gotcha for next session (cost real time):** the `swift run`/debug `zforfinder` binary's `UserDefaults.standard` resolves to the **`app.gethaunts.Haunts`** domain (NOT `zforfinder` or `app.gethaunts.zforfinder`). Proof: it logged `navigation tracking ON` (no `haunts.learnFromNavigation` key in that domain → defaults true) while the `zforfinder` domain had it =0; and the live menu hint reflected that domain's stored hotkey. So to test a TRUE fresh install, clear the override there: `defaults delete app.gethaunts.Haunts haunts.hotkeyKeyCode haunts.hotkeyModifiers`. A stale ⌘⇧H (keyCode 4 / mods 768 — the rejected Finder-Home chord) was lurking there from a prior session and masked the new default until cleared.

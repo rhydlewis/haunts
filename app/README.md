@@ -7,8 +7,8 @@ for the product overview.
 ```bash
 cd app
 swift build
-swift test            # Swift Testing — 164 tests
-swift run zforfinder  # menu-bar app; press ⌃⌘Space to summon the palette
+swift test            # Swift Testing — 167 tests
+swift run zforfinder  # menu-bar app; press ⌥Space to summon the palette
 ```
 A ghost glyph appears in the menu bar (no Dock icon). **Settings…** is on the
 menu-bar menu. A proper double-clickable, signed `Haunts.app` bundle is bead `v3n`
@@ -32,7 +32,7 @@ the shell and passes plain data into the engine.
 On launch the app builds a **warm** index from signals that already exist (git repos,
 shell history, IDE recents, Spotlight usage), blended with per-source normalization +
 a source-diversity bonus. Opt-in `FinderTracker` then learns from live Finder
-navigation. `⌃⌘Space` opens a non-activating palette; type to subsequence-filter;
+navigation. `⌥Space` opens a non-activating palette; type to subsequence-filter;
 `↩`/`⌘↩`/`⌃↩` open in Finder/editor/terminal; `⌘⌫` forgets a row.
 
 > Note: the SwiftPM target is named `zforfinder` (historical); the product and the

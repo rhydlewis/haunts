@@ -15,7 +15,7 @@ enum HotKeyUtils {
         return mods
     }
 
-    /// "⌃⌘Space" style chord string from persisted Carbon values.
+    /// "⌥Space" style chord string from persisted Carbon values.
     static func displayString(keyCode: UInt32, carbonModifiers: UInt32) -> String {
         var s = ""
         if carbonModifiers & UInt32(controlKey) != 0 { s += "⌃" }

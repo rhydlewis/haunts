@@ -261,6 +261,41 @@ struct EditorTargetDetectTests {
     }
 }
 
+// MARK: - Hotkey defaults
+
+@Suite("HotkeyDefaultTests", .serialized)
+struct HotkeyDefaultTests {
+
+    private func clearKeys() {
+        UserDefaults.standard.removeObject(forKey: "haunts.hotkeyKeyCode")
+        UserDefaults.standard.removeObject(forKey: "haunts.hotkeyModifiers")
+    }
+
+    // Carbon: kVK_Space = 49, optionKey = 2048. The default summon chord is
+    // ⌥Space — clear of macOS symbolic hotkeys (⌘Space Spotlight, ⌃Space /
+    // ⌃⌥Space input source, ⌃⌘Space emoji) and of Finder's ⌘⇧H Home.
+    @Test func defaultChordIsOptionSpace() {
+        #expect(Settings.defaultHotkeyKeyCode == 49)
+        #expect(Settings.defaultHotkeyModifiers == 2048)
+    }
+
+    @Test func freshInstallResolvesToOptionSpace() {
+        clearKeys()
+        #expect(Settings.hotkeyKeyCode == 49)
+        #expect(Settings.hotkeyModifiers == 2048)
+        clearKeys()
+    }
+
+    // A user who rebound keeps their chord — the stored value wins over the default.
+    @Test func storedOverrideWinsOverDefault() {
+        clearKeys()
+        Settings.hotkeyKeyCode = 49
+        Settings.hotkeyModifiers = 256 + 4096   // ⌃⌘
+        #expect(Settings.hotkeyModifiers == 4352)
+        clearKeys()
+    }
+}
+
 // MARK: - ScanRoot struct
 
 @Suite("ScanRootStructTests")

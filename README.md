@@ -30,7 +30,7 @@ While the palette is open:
 
 | Key | Action |
 | --- | --- |
-| `⌃⌘Space` | Summon / dismiss the palette (rebindable in Preferences) |
+| `⌥Space` | Summon / dismiss the palette (rebindable in Preferences) |
 | type | Filter results by name |
 | `↑` / `↓` | Move selection |
 | `↩` | Open the selected folder in **Finder** |
@@ -39,8 +39,8 @@ While the palette is open:
 | `⌘⌫` | **Forget** the selected folder (remove it from the learned set) |
 | `Esc` | Close the palette |
 
-> The default summon chord `⌃⌘Space` collides with the macOS Emoji & Symbols viewer.
-> If that's a problem, rebind it under **Settings → General**.
+> The default summon chord is `⌥Space` — clear of macOS's reserved shortcuts
+> (Spotlight, input source, Emoji & Symbols). Rebind it under **Settings → General**.
 
 ## Build & run
 

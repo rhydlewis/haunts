@@ -42,9 +42,14 @@ public struct Settings {
 
     // MARK: Hotkey
 
-    // Default: Space (keyCode 49) + ⌃⌘ (cmdKey | controlKey = 256 | 4096 = 4352)
+    // Default: Space (keyCode 49) + ⌥ (optionKey = 2048).
+    // ⌥Space is the conventional launcher chord and is clear of macOS symbolic
+    // hotkeys (⌘Space Spotlight, ⌃Space / ⌃⌥Space input source, ⌃⌘Space emoji)
+    // and of Finder's ⌘⇧H Home. Earlier default was ⌃⌘Space (4352), which
+    // collided with the system Emoji & Symbols viewer. Only fresh/unmodified
+    // installs flip — a user who rebound keeps their stored chord.
     public static let defaultHotkeyKeyCode: UInt32 = 49
-    public static let defaultHotkeyModifiers: UInt32 = 256 + 4096
+    public static let defaultHotkeyModifiers: UInt32 = 2048
 
     public static var hotkeyKeyCode: UInt32 {
         get {
