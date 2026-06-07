@@ -41,17 +41,27 @@ step() { printf '\033[1;38;5;208m▸\033[0m %s\n' "$1"; }   # ember-ish arrow
 # --- 1. build the binary ---------------------------------------------------
 step "swift build -c $CONFIG"
 swift build -c "$CONFIG" --package-path "$APP_PKG"
-BIN="$(swift build -c "$CONFIG" --package-path "$APP_PKG" --show-bin-path)/zforfinder"
+BIN_DIR="$(swift build -c "$CONFIG" --package-path "$APP_PKG" --show-bin-path)"
+BIN="$BIN_DIR/zforfinder"
 [ -x "$BIN" ] || { echo "binary not found at $BIN" >&2; exit 1; }
+# Sparkle.framework (bead 7hr) — SPM drops a copy next to the linked binary.
+# It is embedded into Contents/Frameworks below; the executable's
+# @executable_path/../Frameworks rpath (Package.swift) finds it at runtime.
+SPARKLE_FW="$BIN_DIR/Sparkle.framework"
+[ -d "$SPARKLE_FW" ] || { echo "Sparkle.framework not found at $SPARKLE_FW" >&2; exit 1; }
 
 # --- 2. lay out the bundle skeleton ----------------------------------------
 step "assembling $APP"
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
 
 cp "$BIN" "$APP/Contents/MacOS/Haunts"      # CFBundleExecutable = Haunts
 cp "$PACKAGING/Info.plist" "$APP/Contents/Info.plist"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
+
+# Embed Sparkle.framework (preserve symlinks/versioned layout with ditto).
+step "embedding Sparkle.framework → Contents/Frameworks"
+/usr/bin/ditto "$SPARKLE_FW" "$APP/Contents/Frameworks/Sparkle.framework"
 
 # --- 3. app icon: app-icon.png → Haunts.icns -------------------------------
 step "rendering Haunts.icns from app-icon.png"
@@ -102,6 +112,9 @@ check "Info.plist is valid"            "plutil -lint '$PL' >/dev/null"
 check "executable present & runnable"  "[ -x '$APP/Contents/MacOS/Haunts' ]"
 check "Haunts.icns present"            "[ -f '$APP/Contents/Resources/Haunts.icns' ]"
 check "Assets.car present"             "[ -f '$APP/Contents/Resources/Assets.car' ]"
+check "Sparkle.framework embedded"     "[ -d '$APP/Contents/Frameworks/Sparkle.framework' ]"
+check "SUPublicEDKey in Info.plist"    "plutil -extract SUPublicEDKey raw -o - '$PL' >/dev/null 2>&1"
+check "SUFeedURL in Info.plist"        "plutil -extract SUFeedURL raw -o - '$PL' >/dev/null 2>&1"
 check "bundle id = app.gethaunts.Haunts" \
       "[ \"\$(plutil -extract CFBundleIdentifier raw -o - '$PL')\" = 'app.gethaunts.Haunts' ]"
 check "LSUIElement = true (agent app)" \

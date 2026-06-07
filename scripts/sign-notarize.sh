@@ -66,18 +66,28 @@ SIGNING_HASH="$(security find-identity -v -p codesigning 2>/dev/null \
 [ -n "$SIGNING_HASH" ] || die "signing identity not found: $SIGNING_IDENTITY"
 echo "  ✓ signing identity: $SIGNING_IDENTITY ($SIGNING_HASH)"
 
-# --- 1. sign deep, hardened runtime + secure timestamp ---------------------
-# NOTE for bead 7hr (Sparkle): when Sparkle.framework lands in the bundle, sign
-# its nested code INSIDE-OUT *before* this outer signature so the bundle seal
-# covers already-signed nested bundles (the outer codesign does NOT recurse into
-# frameworks). Per ../lpx-explorer/scripts/build-release.sh, that is:
-#   codesign --force --options runtime --timestamp --sign "$SIGNING_HASH" \
-#     "<fw>/Versions/B/XPCServices/Downloader.xpc" \
-#     "<fw>/Versions/B/XPCServices/Installer.xpc" \
-#     "<fw>/Versions/B/Updater.app" \
-#     "<fw>/Versions/B/Autoupdate"
-#   codesign --force --options runtime --timestamp --sign "$SIGNING_HASH" "<fw>"
-# Today the bundle has no nested frameworks, so a single sign of the .app suffices.
+# --- 1a. sign Sparkle.framework INSIDE-OUT (bead 7hr) ----------------------
+# The outer codesign does NOT recurse into nested frameworks, so Sparkle's own
+# helper bundles must be signed FIRST (each with hardened runtime + timestamp)
+# so the framework seal covers them and the outer app seal covers the framework.
+# Order is inside-out: XPC services + Updater.app + Autoupdate, THEN the
+# framework itself. Per ../lpx-explorer/scripts/build-release.sh.
+SPARKLE_FW="$APP/Contents/Frameworks/Sparkle.framework"
+if [ -d "$SPARKLE_FW" ]; then
+    step "codesign Sparkle.framework (nested helpers first, inside-out)"
+    codesign --force --options runtime --timestamp --sign "$SIGNING_HASH" \
+        "$SPARKLE_FW/Versions/B/XPCServices/Downloader.xpc" \
+        "$SPARKLE_FW/Versions/B/XPCServices/Installer.xpc" \
+        "$SPARKLE_FW/Versions/B/Updater.app" \
+        "$SPARKLE_FW/Versions/B/Autoupdate"
+    codesign --force --options runtime --timestamp --sign "$SIGNING_HASH" \
+        "$SPARKLE_FW"
+    echo "  ✓ Sparkle.framework + nested helpers signed"
+else
+    echo "  • no Sparkle.framework embedded — skipping nested signing"
+fi
+
+# --- 1b. sign the app: deep, hardened runtime + secure timestamp -----------
 step "codesign (Developer ID, hardened runtime, timestamp, entitlements)"
 codesign --force --options runtime --timestamp \
     --entitlements "$ENTITLEMENTS" \
