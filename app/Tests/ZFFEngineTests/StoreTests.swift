@@ -439,6 +439,156 @@ struct StoreResetTests {
     }
 }
 
+// MARK: - PlaceRecord origin (round-trip + safe migration)
+
+@Suite("PlaceRecordOriginTests")
+struct PlaceRecordOriginTests {
+
+    private func makeCoders() -> (JSONEncoder, JSONDecoder) {
+        let e = JSONEncoder(); e.dateEncodingStrategy = .iso8601
+        let d = JSONDecoder(); d.dateDecodingStrategy = .iso8601
+        return (e, d)
+    }
+
+    @Test func defaultOriginIsNav() {
+        let r = PlaceRecord(path: "/a", visitCount: 1, lastVisitDate: Date())
+        #expect(r.origin == .nav)
+    }
+
+    @Test func originRoundTrips() throws {
+        let (enc, dec) = makeCoders()
+        let date = Date(timeIntervalSince1970: 1_700_000_000)
+        for origin in [PlaceOrigin.nav, .jump] {
+            let r = PlaceRecord(path: "/a/b", visitCount: 2, lastVisitDate: date, origin: origin)
+            let decoded = try dec.decode(PlaceRecord.self, from: enc.encode(r))
+            #expect(decoded.origin == origin)
+            #expect(decoded == r)
+        }
+    }
+
+    // Records written before the origin field existed must still decode — as .nav.
+    @Test func legacyJSONWithoutOriginDecodesAsNav() throws {
+        let (_, dec) = makeCoders()
+        let legacy = """
+        [{"path":"/Users/x/legacy","visitCount":5,"lastVisitDate":"2023-11-14T22:13:20Z"}]
+        """
+        let decoded = try dec.decode([PlaceRecord].self, from: Data(legacy.utf8))
+        #expect(decoded.count == 1)
+        #expect(decoded[0].origin == .nav)
+        #expect(decoded[0].path == "/Users/x/legacy")
+        #expect(decoded[0].visitCount == 5)
+    }
+
+    // A real store file written by an older build (no origin) loads cleanly.
+    @Test func legacyStoreFileLoadsAsNav() throws {
+        let (store, dir, cleanup) = makeTempStore()
+        defer { cleanup() }
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let legacy = """
+        [{"path":"/p","visitCount":3,"lastVisitDate":"2023-11-14T22:13:20Z"}]
+        """
+        try Data(legacy.utf8).write(to: store.fileURL, options: .atomic)
+        let loaded = store.load()
+        #expect(loaded.count == 1)
+        #expect(loaded[0].origin == .nav)
+    }
+}
+
+// MARK: - record(origin:) + origin-aware compact
+
+@Suite("StoreOriginTests")
+struct StoreOriginTests {
+
+    @Test func recordDefaultsToNav() {
+        let (store, _, cleanup) = makeTempStore(); defer { cleanup() }
+        store.record(path: URL(fileURLWithPath: "/a"))
+        #expect(store.load()[0].origin == .nav)
+    }
+
+    @Test func recordTagsJump() {
+        let (store, _, cleanup) = makeTempStore(); defer { cleanup() }
+        store.record(path: URL(fileURLWithPath: "/a"), origin: .jump)
+        #expect(store.load()[0].origin == .jump)
+    }
+
+    // Same path, different origins → kept as separate rows after compact, each
+    // summing only its own origin. Truthful for stats; ranking sums across both.
+    @Test func compactKeepsOriginsSeparate() {
+        let (store, _, cleanup) = makeTempStore(); defer { cleanup() }
+        let url = URL(fileURLWithPath: "/a/proj")
+        let date = Date(timeIntervalSince1970: 1_700_000_000)
+        store.record(path: url, visitedAt: date, origin: .nav)
+        store.record(path: url, visitedAt: date, origin: .nav)
+        store.record(path: url, visitedAt: date, origin: .jump)
+        store.record(path: url, visitedAt: date, origin: .jump)
+        store.record(path: url, visitedAt: date, origin: .jump)
+        store.compact()
+        let records = store.load()
+        #expect(records.count == 2)
+        let byOrigin = Dictionary(uniqueKeysWithValues: records.map { ($0.origin, $0) })
+        #expect(byOrigin[.nav]?.visitCount == 2)
+        #expect(byOrigin[.jump]?.visitCount == 3)
+        // Total visits per path (ranking signal) is preserved across origins.
+        #expect(records.reduce(0) { $0 + $1.visitCount } == 5)
+    }
+
+    // Same-origin records still collapse to one row (existing behaviour, with origin).
+    @Test func compactCollapsesSameOrigin() {
+        let (store, _, cleanup) = makeTempStore(); defer { cleanup() }
+        let url = URL(fileURLWithPath: "/a")
+        store.record(path: url, origin: .jump)
+        store.record(path: url, origin: .jump)
+        store.compact()
+        let records = store.load()
+        #expect(records.count == 1)
+        #expect(records[0].visitCount == 2)
+        #expect(records[0].origin == .jump)
+    }
+}
+
+// MARK: - Usage aggregation (pure)
+
+@Suite("StoreJumpStatsTests")
+struct StoreJumpStatsTests {
+
+    private func rec(_ path: String, _ count: Int, _ origin: PlaceOrigin) -> PlaceRecord {
+        PlaceRecord(path: path, visitCount: count, lastVisitDate: Date(timeIntervalSince1970: 0), origin: origin)
+    }
+
+    @Test func totalJumpsSumsJumpRecordsOnly() {
+        let records = [
+            rec("/a", 3, .jump),
+            rec("/a", 10, .nav),     // passive — must NOT count
+            rec("/b", 2, .jump),
+        ]
+        #expect(Store.totalJumps(records) == 5)
+    }
+
+    @Test func totalJumpsIsZeroWithNoJumps() {
+        #expect(Store.totalJumps([rec("/a", 9, .nav)]) == 0)
+        #expect(Store.totalJumps([]) == 0)
+    }
+
+    @Test func jumpCountsAggregatePerPathDescending() {
+        let records = [
+            rec("/a", 1, .jump),
+            rec("/a", 2, .jump),     // /a totals 3
+            rec("/b", 5, .jump),
+            rec("/c", 99, .nav),     // passive — excluded entirely
+        ]
+        let counts = Store.jumpCounts(records)
+        #expect(counts == [
+            Store.JumpCount(path: "/b", count: 5),
+            Store.JumpCount(path: "/a", count: 3),
+        ])
+    }
+
+    @Test func jumpCountsBreaksTiesByPath() {
+        let counts = Store.jumpCounts([rec("/z", 2, .jump), rec("/a", 2, .jump)])
+        #expect(counts.map(\.path) == ["/a", "/z"])
+    }
+}
+
 @Suite("StoreForgetTests")
 struct StoreForgetTests {
 

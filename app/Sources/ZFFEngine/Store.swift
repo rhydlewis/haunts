@@ -1,16 +1,44 @@
 import Foundation
 
+/// How a visit entered the frecency store.
+///
+/// - `nav`: passive observation by the Finder tracker (opt-in "Learn from
+///   navigation"), or any legacy/imported record with no recorded origin.
+/// - `jump`: an explicit palette activation (return / ⌘-return / ⌃-return) — the
+///   user's strongest frecency signal and the only origin the Usage tab counts.
+public enum PlaceOrigin: String, Codable, Sendable, Equatable {
+    case nav
+    case jump
+}
+
 /// A single frecency log entry. One entry is appended per navigation event;
-/// `compact()` later deduplicates by path.
+/// `compact()` later deduplicates by (path, origin).
 public struct PlaceRecord: Codable, Sendable, Equatable {
     public var path: String
     public var visitCount: Int
     public var lastVisitDate: Date
+    /// Defaults to `.nav` so records written before this field existed (and any
+    /// future record created without an explicit origin) decode/construct as
+    /// passive navigation — a safe migration that never breaks learned data.
+    public var origin: PlaceOrigin
 
-    public init(path: String, visitCount: Int, lastVisitDate: Date) {
+    public init(path: String, visitCount: Int, lastVisitDate: Date, origin: PlaceOrigin = .nav) {
         self.path = path
         self.visitCount = visitCount
         self.lastVisitDate = lastVisitDate
+        self.origin = origin
+    }
+
+    private enum CodingKeys: String, CodingKey { case path, visitCount, lastVisitDate, origin }
+
+    // Custom decode (encode stays synthesized): the synthesized decoder treats a
+    // missing key as an error, so we decode `origin` leniently — absent ⇒ `.nav`.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        path = try c.decode(String.self, forKey: .path)
+        visitCount = try c.decode(Int.self, forKey: .visitCount)
+        lastVisitDate = try c.decode(Date.self, forKey: .lastVisitDate)
+        origin = try c.decodeIfPresent(PlaceOrigin.self, forKey: .origin) ?? .nav
     }
 }
 
@@ -63,9 +91,10 @@ public struct Store: Sendable {
     // MARK: - Record
 
     /// Append a new entry for `path` (visitCount = 1). Auto-compacts when the
-    /// total raw entry count exceeds 500.
-    public func record(path: URL, visitedAt: Date = Date()) {
-        let entry = PlaceRecord(path: path.path, visitCount: 1, lastVisitDate: visitedAt)
+    /// total raw entry count exceeds 500. `origin` distinguishes an explicit jump
+    /// from passive navigation; it defaults to `.nav`.
+    public func record(path: URL, visitedAt: Date = Date(), origin: PlaceOrigin = .nav) {
+        let entry = PlaceRecord(path: path.path, visitCount: 1, lastVisitDate: visitedAt, origin: origin)
         var records = load()
         records.append(entry)
         write(records)
@@ -76,22 +105,61 @@ public struct Store: Sendable {
 
     // MARK: - Compact
 
-    /// Deduplicate by path: sum visitCounts, keep latest lastVisitDate. Writes atomically.
+    /// Deduplicate by (path, origin): sum visitCounts, keep latest lastVisitDate.
+    /// Writes atomically.
+    ///
+    /// Origin is part of the key — not collapsed away — so a folder reached by both
+    /// passive navigation and explicit jumps keeps one row per origin. Ranking sums
+    /// across both (see `Frecency.blend`), while the Usage tab can still count jumps
+    /// truthfully (`Store.totalJumps` / `jumpCounts`). Collapsing to a single origin
+    /// would force a lossy choice that over- or under-counts explicit jumps.
     public func compact() {
         let records = load()
-        var byPath: [String: PlaceRecord] = [:]
+        struct Key: Hashable { let path: String; let origin: PlaceOrigin }
+        var byKey: [Key: PlaceRecord] = [:]
         for r in records {
-            if var existing = byPath[r.path] {
+            let key = Key(path: r.path, origin: r.origin)
+            if var existing = byKey[key] {
                 existing.visitCount += r.visitCount
                 if r.lastVisitDate > existing.lastVisitDate {
                     existing.lastVisitDate = r.lastVisitDate
                 }
-                byPath[r.path] = existing
+                byKey[key] = existing
             } else {
-                byPath[r.path] = r
+                byKey[key] = r
             }
         }
-        write(Array(byPath.values))
+        write(Array(byKey.values))
+    }
+
+    // MARK: - Usage aggregation (pure)
+
+    /// A folder's explicit-jump tally, for the Usage tab's top locations.
+    public struct JumpCount: Equatable, Sendable {
+        public let path: String
+        public let count: Int
+        public init(path: String, count: Int) {
+            self.path = path
+            self.count = count
+        }
+    }
+
+    /// Total explicit jumps = sum of `visitCount` across `.jump` records only.
+    /// Passive navigation and imported scores never count. Pure.
+    public static func totalJumps(_ records: [PlaceRecord]) -> Int {
+        records.lazy.filter { $0.origin == .jump }.reduce(0) { $0 + $1.visitCount }
+    }
+
+    /// Per-folder explicit-jump counts, highest first (ties broken by path for a
+    /// stable order). `.jump` records only. Pure — backs the Usage tab's top-N.
+    public static func jumpCounts(_ records: [PlaceRecord]) -> [JumpCount] {
+        var byPath: [String: Int] = [:]
+        for r in records where r.origin == .jump {
+            byPath[r.path, default: 0] += r.visitCount
+        }
+        return byPath
+            .map { JumpCount(path: $0.key, count: $0.value) }
+            .sorted { $0.count != $1.count ? $0.count > $1.count : $0.path < $1.path }
     }
 
     // MARK: - Reset
