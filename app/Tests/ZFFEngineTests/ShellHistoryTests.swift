@@ -65,10 +65,40 @@ struct ShellHistoryParseTests {
         #expect(counts["~/Documents"] == 1)
     }
 
+    // Bash: one command per line, harvested directly (no prefix).
+    @Test func parsesBashHistoryPlainLines() {
+        let bash = """
+        cd /Users/x/work
+        brew install pyenv
+        ls ~/Documents
+        """
+        let counts = ShellHistory.parseBash(bash)
+        #expect(counts["/Users/x/work"] == 2)   // cd-target + token
+        #expect(counts["~/Documents"] == 1)
+    }
+
+    // Bash with HISTTIMEFORMAT set: each command is preceded by a `#<epoch>`
+    // comment line, which must be skipped (never harvested as a path).
+    @Test func parsesBashHistorySkippingEpochComments() {
+        let bash = """
+        #1698595797
+        cd /Users/x/work
+        #1698595803
+        ls ~/Documents
+        """
+        let counts = ShellHistory.parseBash(bash)
+        #expect(counts["/Users/x/work"] == 2)
+        #expect(counts["~/Documents"] == 1)
+        // The epoch comment lines contribute nothing.
+        #expect(counts.keys.allSatisfy { !$0.contains("#") })
+        #expect(counts.keys.allSatisfy { !$0.contains("1698595797") })
+    }
+
     // Empty input is stable.
     @Test func emptyInputIsStable() {
         #expect(ShellHistory.parseFish("").isEmpty)
         #expect(ShellHistory.parseZsh("").isEmpty)
+        #expect(ShellHistory.parseBash("").isEmpty)
     }
 }
 
@@ -101,5 +131,20 @@ struct ShellHistorySourceTests {
             fishURL: URL(fileURLWithPath: "/nonexistent/fish"),
             zshURL: URL(fileURLWithPath: "/nonexistent/zsh"))
         #expect(src.paths(home: "/Users/x").isEmpty)
+    }
+
+    // A wired bashURL contributes paths to the combined result, with ~ expanded.
+    @Test func readsBashHistory() {
+        let (fish, c1) = tempFile("- cmd: cd ~/code/proj\n  when: 1\n", "fish_history")
+        defer { c1() }
+        let (zsh, c2) = tempFile("", "zsh_history")
+        defer { c2() }
+        let (bash, c3) = tempFile("#1698595797\ncd ~/code/proj\n", "bash_history")
+        defer { c3() }
+        let src = ShellHistorySource(fishURL: fish, zshURL: zsh, bashURL: bash)
+        let paths = src.paths(home: "/Users/x")
+        // fish: 2 (cd+token), bash: 2 (cd+token) → 4; the #epoch line adds nothing.
+        #expect(paths["/Users/x/code/proj"] == 4)
+        #expect(paths.keys.allSatisfy { !$0.hasPrefix("~") })
     }
 }

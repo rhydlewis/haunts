@@ -48,6 +48,19 @@ public enum ShellHistory {
         return counts
     }
 
+    /// Parse a bash history file. One command per line (bash has no prefix), so
+    /// each line feeds `harvest` directly. With `HISTTIMEFORMAT` set, bash writes a
+    /// `#<epoch>` comment line before each command — skip those.
+    public static func parseBash(_ text: String) -> [String: Int] {
+        var counts: [String: Int] = [:]
+        for raw in text.split(separator: "\n", omittingEmptySubsequences: false) {
+            let line = String(raw)
+            if line.range(of: #"^#\d+\s*$"#, options: .regularExpression) != nil { continue }
+            for p in harvest(from: line) { counts[p, default: 0] += 1 }
+        }
+        return counts
+    }
+
     /// Parse a zsh history file. Lines may carry an extended-history prefix
     /// (`: <start>:<elapsed>;<cmd>`) which we strip before harvesting.
     public static func parseZsh(_ text: String) -> [String: Int] {
@@ -61,22 +74,25 @@ public enum ShellHistory {
     }
 }
 
-/// Impure shell-history reader. Reads fish + zsh history if present, parses them
-/// (pure), expands `~`, and returns raw absolute-path → count. Directory
+/// Impure shell-history reader. Reads fish + zsh + bash history if present, parses
+/// them (pure), expands `~`, and returns raw absolute-path → count. Directory
 /// resolution and git-root rollup are left to `AppState`.
 public struct ShellHistorySource: Sendable {
     public let fishURL: URL
     public let zshURL: URL
+    public let bashURL: URL?
 
     public init(home: String = NSHomeDirectory()) {
         let h = URL(fileURLWithPath: home)
         self.fishURL = h.appendingPathComponent(".local/share/fish/fish_history")
         self.zshURL = h.appendingPathComponent(".zsh_history")
+        self.bashURL = h.appendingPathComponent(".bash_history")
     }
 
-    public init(fishURL: URL, zshURL: URL) {
+    public init(fishURL: URL, zshURL: URL, bashURL: URL? = nil) {
         self.fishURL = fishURL
         self.zshURL = zshURL
+        self.bashURL = bashURL
     }
 
     /// Read whatever history files exist and return raw path → occurrence count.
@@ -91,6 +107,7 @@ public struct ShellHistorySource: Sendable {
         }
         if let t = try? String(contentsOf: fishURL, encoding: .utf8) { merge(ShellHistory.parseFish(t)) }
         if let t = try? String(contentsOf: zshURL, encoding: .utf8) { merge(ShellHistory.parseZsh(t)) }
+        if let bashURL, let t = try? String(contentsOf: bashURL, encoding: .utf8) { merge(ShellHistory.parseBash(t)) }
         return combined
     }
 }
