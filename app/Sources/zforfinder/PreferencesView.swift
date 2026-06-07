@@ -3,6 +3,17 @@ import AppKit
 import Carbon.HIToolbox
 import UniformTypeIdentifiers
 import HauntsCore
+import ZFFEngine
+
+// MARK: - Path display
+
+/// Abbreviate a home-relative path to `~` for display. Shared by the Folders and
+/// Usage tabs so both produce identical output.
+func displayPath(_ p: String) -> String {
+    let home = NSHomeDirectory()
+    if p == home { return "~" }
+    return p.hasPrefix(home + "/") ? "~" + p.dropFirst(home.count) : p
+}
 
 // MARK: - Theme
 
@@ -56,6 +67,10 @@ final class PreferencesModel: ObservableObject {
     @Published var terminalTarget: String { didSet { Settings.terminalTarget = terminalTarget } }
     @Published var installedTerminals: [String]
 
+    // Usage — a snapshot of the pure aggregation, refreshed when the tab appears.
+    // The tab is a passive renderer; nothing here computes stats itself.
+    @Published var usageStats: UsageStats?
+
     private var recordMonitor: Any?
 
     init(appState: AppState?) {
@@ -73,6 +88,14 @@ final class PreferencesModel: ObservableObject {
         self.editorTargets = Settings.editorTargetsOrDefault()
         self.terminalTarget = Settings.terminalTarget
         self.installedTerminals = Settings.detectInstalledTerminals()
+    }
+
+    // MARK: Usage
+
+    /// Pull a fresh snapshot from the store. Called when the Usage tab appears so
+    /// the numbers reflect jumps made since the window opened.
+    func refreshUsageStats() {
+        usageStats = appState?.usageStats()
     }
 
     // MARK: Hotkey recording
@@ -186,6 +209,8 @@ struct PreferencesView: View {
                 .tabItem { Label("Folders", systemImage: "folder") }
             OpenWithTab(model: model)
                 .tabItem { Label("Open With", systemImage: "arrow.up.forward.app") }
+            UsageTab(model: model)
+                .tabItem { Label("Usage", systemImage: "chart.bar.xaxis") }
             AboutTab()
                 .tabItem { Label("About", systemImage: "info.circle") }
         }
@@ -350,11 +375,6 @@ private struct FoldersTab: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
-    }
-
-    private func displayPath(_ p: String) -> String {
-        let home = NSHomeDirectory()
-        return p == home ? "~" : (p.hasPrefix(home + "/") ? "~" + p.dropFirst(home.count) : p)
     }
 
     private func chooseFolder() {
