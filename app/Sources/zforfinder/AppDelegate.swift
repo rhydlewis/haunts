@@ -48,6 +48,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, self.panel.isVisible else { return event }
             switch Int(event.keyCode) {
+            case kVK_ANSI_Comma:
+                // ⌘, opens Settings and dismisses the palette (the status-menu
+                // keyEquivalent only fires when a Haunts window is key, which the
+                // non-activating panel isn't). Plain ',' must still type into the
+                // query field, so require Command.
+                guard event.modifierFlags.contains(.command) else { return event }
+                self.openSettings(); self.hide(); return nil
             case kVK_Escape:     self.hide(); return nil
             case kVK_DownArrow:  self.state.move(1); return nil
             case kVK_UpArrow:    self.state.move(-1); return nil
