@@ -130,9 +130,14 @@ if [ "$PUBLISH" -eq 1 ]; then
     # commit source files like release.js/llms.njk (which can be entangled with
     # unrelated site WIP). If the repoint is missing or uncommitted, the deployed
     # site would still build the old GitHub-Releases URL and the download 404s.
+    # Robust check: the download URL must target the site's /assets/dmg/ path
+    # (literal gethaunts.app or a ${site.url} template both qualify) and must NOT
+    # fall back to a GitHub-Releases download URL.
     REL_JS="$SITE_PATH/src/_data/release.js"
-    grep -q 'gethaunts\.app/assets/dmg' "$REL_JS" \
-        || die "site release.js does not point at gethaunts.app/assets/dmg — repoint it first ($REL_JS)"
+    grep -q '/assets/dmg' "$REL_JS" \
+        || die "site release.js does not build a /assets/dmg/ download URL — repoint it first ($REL_JS)"
+    ! grep -q 'releases/download' "$REL_JS" \
+        || die "site release.js still references GitHub releases/download — repoint it to the site ($REL_JS)"
     git -C "$SITE_PATH" diff --quiet -- src/_data/release.js src/llms.njk \
         || die "site repoint (release.js/llms.njk) is uncommitted — commit it before publishing so the live site serves the right download URL"
 
