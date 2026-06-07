@@ -52,14 +52,14 @@
 
     <!-- Sparkle auto-updates (bead 7hr). SUFeedURL is the hosted appcast;
          SUPublicEDKey is the EdDSA public half of the keypair whose PRIVATE key
-         lives in this build machine's login keychain (account=haunts). Updates
-         are accepted only if their signature verifies against this public key —
-         a tampered/unsigned update is rejected. The private key signs every
-         future release; back it up (sparkle-bin/generate_keys --account haunts -x). -->
+         lives in this build machine's login keychain — the SHARED Sparkle key
+         (default account) also used by flowcus-v2 + lpx-explorer. Updates are
+         accepted only if their signature verifies against this public key; a
+         tampered/unsigned update is rejected. Back up the shared private key. -->
     <key>SUFeedURL</key>
     <string>https://gethaunts.app/appcast.xml</string>
     <key>SUPublicEDKey</key>
-    <string>PqKpsLMAv9Q2DX0PceyvTpl5tUQ1z9Uk/ue4wQr0cdk=</string>
+    <string>K3ez3NH5DW5mbJbJcMWK5yvK5JYv7gjMowuMZsJwzf0=</string>
 
     <key>NSHumanReadableCopyright</key>
     <string>Copyright © 2026 Rhyd Lewis. All rights reserved.</string>

@@ -41,7 +41,7 @@ DMG_PATH="${1:-${DMG_PATH:-}}"
 VERSION="${VERSION:-$(plutil -extract CFBundleShortVersionString raw -o - "$INFO_PLIST")}"
 BUILD="$(plutil -extract CFBundleVersion raw -o - "$INFO_PLIST")"
 RELEASE_NOTES="${RELEASE_NOTES:-Bug fixes and improvements.}"
-SPARKLE_ACCOUNT="${SPARKLE_ACCOUNT:-haunts}"
+SPARKLE_ACCOUNT="${SPARKLE_ACCOUNT:-}"   # empty = Sparkle's default keychain key (shared with flowcus/lpx)
 MIN_SYSTEM_VERSION="14.0"
 
 DMG_FILENAME="$(basename "$DMG_PATH")"
@@ -64,7 +64,7 @@ SIGN_UPDATE="$(find "$APP_PKG/.build/artifacts" -path '*/Sparkle/bin/sign_update
 # --- sign ------------------------------------------------------------------
 step "sign_update (EdDSA, keychain account=$SPARKLE_ACCOUNT) on $DMG_FILENAME"
 # Prints e.g.  sparkle:edSignature="…" length="…"  — inlined into the enclosure.
-SIGN_OUTPUT="$("$SIGN_UPDATE" --account "$SPARKLE_ACCOUNT" "$DMG_PATH")"
+SIGN_OUTPUT="$("$SIGN_UPDATE" ${SPARKLE_ACCOUNT:+--account "$SPARKLE_ACCOUNT"} "$DMG_PATH")"
 echo "  $SIGN_OUTPUT"
 echo "$SIGN_OUTPUT" | grep -q 'sparkle:edSignature=' || die "sign_update did not emit an EdDSA signature"
 
