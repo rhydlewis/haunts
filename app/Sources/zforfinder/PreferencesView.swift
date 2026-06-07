@@ -442,7 +442,7 @@ private struct AboutTab: View {
                 .buttonStyle(.borderedProminent).tint(.ember)
                 Button("gethaunts.app") { open("https://gethaunts.app") }
                 Button("GitHub") { open("https://github.com/rhydlewis/haunts") }
-                Button("Acknowledgements") { open("https://gethaunts.app/acknowledgements") }
+                Button("Help") { open("https://gethaunts.app/help") }
             }
             .padding(.top, 18)
 
