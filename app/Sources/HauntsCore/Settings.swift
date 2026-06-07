@@ -173,6 +173,14 @@ public struct Settings {
         set { UserDefaults.standard.set(newValue, forKey: "haunts.lastSeenVersion") }
     }
 
+    /// Timestamp of the very first launch. Stamped exactly once (by
+    /// `Analytics.reportLaunch`) and never overwritten — the Usage tab reads it for
+    /// "jumps since <date>". `nil` until first stamped. Local-only; never sent.
+    public static var firstLaunchDate: Date? {
+        get { UserDefaults.standard.object(forKey: "haunts.firstLaunchDate") as? Date }
+        set { UserDefaults.standard.set(newValue, forKey: "haunts.firstLaunchDate") }
+    }
+
     // MARK: - Helpers
 
     private static func boolOrDefault(_ key: String, default def: Bool) -> Bool {

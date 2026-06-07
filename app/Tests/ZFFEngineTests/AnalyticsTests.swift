@@ -146,3 +146,64 @@ struct LastSeenVersionTests {
         clear()
     }
 }
+
+// MARK: - firstLaunchDate: stamped once on first run, never overwritten
+
+@Suite("AnalyticsFirstLaunchTests")
+struct AnalyticsFirstLaunchTests {
+
+    private final class Stamp { var stamped: [Date] = [] }
+
+    @Test func installStampsFirstLaunchWhenUnset() {
+        let s = Stamp()
+        let when = Date(timeIntervalSince1970: 1_700_000_000)
+        _ = Analytics.reportLaunch(
+            current: "0.1.0", lastSeen: nil,
+            persist: { _ in }, send: { _ in },
+            firstLaunchDate: nil, stampFirstLaunch: { s.stamped.append($0) }, now: when)
+        #expect(s.stamped == [when])
+    }
+
+    @Test func doesNotOverwriteExistingFirstLaunch() {
+        let s = Stamp()
+        let existing = Date(timeIntervalSince1970: 1)
+        _ = Analytics.reportLaunch(
+            current: "0.1.1", lastSeen: "0.1.0",
+            persist: { _ in }, send: { _ in },
+            firstLaunchDate: existing, stampFirstLaunch: { s.stamped.append($0) },
+            now: Date(timeIntervalSince1970: 999))
+        #expect(s.stamped.isEmpty, "firstLaunchDate must never be overwritten once set")
+    }
+
+    // Even a same-version launch (.none, no ping) stamps if the date is missing.
+    @Test func fallbackStampsWhenDateMissingOnAnyLaunch() {
+        let s = Stamp()
+        let when = Date(timeIntervalSince1970: 1_700_000_500)
+        _ = Analytics.reportLaunch(
+            current: "0.2.0", lastSeen: "0.2.0",
+            persist: { _ in }, send: { _ in },
+            firstLaunchDate: nil, stampFirstLaunch: { s.stamped.append($0) }, now: when)
+        #expect(s.stamped == [when])
+    }
+}
+
+// MARK: - firstLaunchDate persistence
+
+@Suite("FirstLaunchDateTests", .serialized)
+struct FirstLaunchDateTests {
+
+    private func clear() { UserDefaults.standard.removeObject(forKey: "haunts.firstLaunchDate") }
+
+    @Test func absentIsNil() {
+        clear()
+        #expect(Settings.firstLaunchDate == nil)
+    }
+
+    @Test func roundTrips() {
+        clear()
+        let d = Date(timeIntervalSince1970: 1_700_000_000)
+        Settings.firstLaunchDate = d
+        #expect(abs((Settings.firstLaunchDate ?? .distantPast).timeIntervalSince(d)) < 1)
+        clear()
+    }
+}

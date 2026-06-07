@@ -68,10 +68,19 @@ public enum Analytics {
         current: String = currentAppVersion(),
         lastSeen: String? = Settings.lastSeenVersion,
         persist: (String) -> Void = { Settings.lastSeenVersion = $0 },
-        send: (URL) -> Void = defaultSend
+        send: (URL) -> Void = defaultSend,
+        firstLaunchDate: Date? = Settings.firstLaunchDate,
+        stampFirstLaunch: (Date) -> Void = { Settings.firstLaunchDate = $0 },
+        now: Date = Date()
     ) -> LaunchEvent {
         let event = launchEvent(lastSeen: lastSeen, current: current)
         persist(current)
+        // Stamp firstLaunchDate once and never overwrite. A fresh install has no
+        // stored date, so this fires on .install; for users who installed before
+        // the field existed it's a best-effort fallback on their next launch.
+        if firstLaunchDate == nil {
+            stampFirstLaunch(now)
+        }
         guard let url = countURL(for: event) else { return event }
         send(url)
         return event
