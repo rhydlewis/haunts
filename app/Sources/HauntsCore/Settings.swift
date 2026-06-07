@@ -160,6 +160,16 @@ public struct Settings {
         return found.isEmpty ? ["Terminal"] : found
     }
 
+    // MARK: Analytics
+
+    /// Last app version seen on launch. Drives the install-vs-upgrade decision
+    /// behind the anonymous GoatCounter count (see `Analytics`); purely local
+    /// bookkeeping that never leaves the Mac.
+    public static var lastSeenVersion: String? {
+        get { UserDefaults.standard.string(forKey: "haunts.lastSeenVersion") }
+        set { UserDefaults.standard.set(newValue, forKey: "haunts.lastSeenVersion") }
+    }
+
     // MARK: - Helpers
 
     private static func boolOrDefault(_ key: String, default def: Bool) -> Bool {

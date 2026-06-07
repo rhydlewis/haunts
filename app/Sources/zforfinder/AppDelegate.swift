@@ -69,6 +69,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             Task { @MainActor in self?.hide() }
         }
 
+        // Anonymous install/upgrade count (bead 6h7). Fire-and-forget and
+        // fail-silent — fires at most one ping per version change, never blocks
+        // launch, and honors the Settings ▸ General opt-out.
+        Analytics.reportLaunch()
+
         // Live Finder-navigation tracking — start only if the user opted in; the
         // Ranking tab's toggle posts .zffToggleLearnFromNavigation when it flips.
         syncNavigationTracking()
