@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import Carbon.HIToolbox
+import UniformTypeIdentifiers
 import HauntsCore
 
 // MARK: - Theme
@@ -122,6 +123,31 @@ final class PreferencesModel: ObservableObject {
             ordered.append(byBundle[d.bundleID]!)
         }
         editorTargets = ordered
+    }
+
+    /// Let the user pick any `.app` bundle (NSOpenPanel restricted to applications,
+    /// starting in /Applications) and append it as an editor target. The bundle ID
+    /// comes from the app's `Bundle`; the display name from CFBundleName /
+    /// CFBundleDisplayName, falling back to the file name. A duplicate bundle ID is
+    /// ignored so re-picking the same app doesn't add a second row.
+    func addEditorManually() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.application]
+        panel.directoryURL = URL(fileURLWithPath: "/Applications")
+        panel.prompt = "Add"
+        panel.message = "Choose an application to open folders with."
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard let bundle = Bundle(url: url),
+              let bundleID = bundle.bundleIdentifier else { return }
+        guard !editorTargets.contains(where: { $0.bundleID == bundleID }) else { return }
+        let name = (bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
+            ?? (bundle.object(forInfoDictionaryKey: "CFBundleName") as? String)
+            ?? FileManager.default.displayName(atPath: url.path)
+            .replacingOccurrences(of: ".app", with: "")
+        editorTargets.append(EditorTarget(name: name, bundleID: bundleID))
     }
 
     // MARK: Reset learned data
@@ -374,6 +400,7 @@ private struct OpenWithTab: View {
                 .frame(minHeight: 130)
 
                 HStack {
+                    Button { model.addEditorManually() } label: { Image(systemName: "plus") }
                     Button { removeSelected() } label: { Image(systemName: "minus") }
                         .disabled(selection == nil)
                     Spacer()

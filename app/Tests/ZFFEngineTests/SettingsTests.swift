@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import AppKit
 @testable import HauntsCore
 
 // MARK: - EditorTarget struct
@@ -240,23 +241,30 @@ struct EditorTargetDetectTests {
         #expect(bundleIDs.count == unique.count)
     }
 
-    @Test func detectOnlyReturnsExistingApps() {
+    // Every detected editor must be a known one AND actually resolvable on this
+    // machine — via Launch Services (which finds ~/Applications, JetBrains Toolbox,
+    // etc.) or, as a fallback, a /Applications bundle. This is the real detection
+    // criterion; it deliberately does NOT require the app to live in /Applications.
+    @Test func detectOnlyReturnsResolvableKnownEditors() {
         let detected = Settings.detectInstalledEditors()
         let fm = FileManager.default
+        let knownFallbackNames: [String: [String]] = [
+            "dev.zed.Zed":           ["Zed"],
+            "com.apple.dt.Xcode":    ["Xcode"],
+            "com.jetbrains.pycharm": ["PyCharm CE", "PyCharm"],
+            "com.microsoft.VSCode":  ["Visual Studio Code"],
+            "com.panic.Nova":        ["Nova"],
+            "com.sublimetext.4":     ["Sublime Text"],
+        ]
         for editor in detected {
-            // Each detected editor must have at least one .app bundle in /Applications
-            let appNames: [String]
-            switch editor.bundleID {
-            case "dev.zed.Zed":           appNames = ["Zed"]
-            case "com.apple.dt.Xcode":    appNames = ["Xcode"]
-            case "com.jetbrains.pycharm": appNames = ["PyCharm CE", "PyCharm"]
-            case "com.microsoft.VSCode":  appNames = ["Visual Studio Code"]
-            case "com.panic.Nova":        appNames = ["Nova"]
-            case "com.sublimetext.4":     appNames = ["Sublime Text"]
-            default:                      appNames = []
-            }
-            let exists = appNames.contains { fm.fileExists(atPath: "/Applications/\($0).app") }
-            #expect(exists, "Detected \(editor.name) but no matching .app found in /Applications")
+            #expect(knownFallbackNames[editor.bundleID] != nil,
+                    "Detected unknown bundleID \(editor.bundleID)")
+            let resolvable = NSWorkspace.shared
+                .urlForApplication(withBundleIdentifier: editor.bundleID) != nil
+            let inAppsFolder = (knownFallbackNames[editor.bundleID] ?? [])
+                .contains { fm.fileExists(atPath: "/Applications/\($0).app") }
+            #expect(resolvable || inAppsFolder,
+                    "Detected \(editor.name) but it resolves via neither Launch Services nor /Applications")
         }
     }
 }

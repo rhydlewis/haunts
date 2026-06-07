@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(AppKit)
+import AppKit
+#endif
 
 // MARK: - EditorTarget
 
@@ -241,16 +244,27 @@ public struct Settings {
         KnownEditor(name: "Sublime Text", bundleID: "com.sublimetext.4",       appNames: ["Sublime Text"]),
     ]
 
-    public static func detectInstalledEditors() -> [EditorTarget] {
+    /// Resolve a known editor's install location regardless of where it lives.
+    /// Launch Services (`NSWorkspace.urlForApplication(withBundleIdentifier:)`)
+    /// finds apps in /Applications, ~/Applications (JetBrains Toolbox), etc. The
+    /// `/Applications/<name>.app` check is kept only as a fallback for the rare
+    /// case where Launch Services hasn't registered the bundle.
+    private static func isEditorInstalled(_ editor: KnownEditor) -> Bool {
+        #if canImport(AppKit)
+        if NSWorkspace.shared.urlForApplication(withBundleIdentifier: editor.bundleID) != nil {
+            return true
+        }
+        #endif
         let fm = FileManager.default
+        return editor.appNames.contains { fm.fileExists(atPath: "/Applications/\($0).app") }
+    }
+
+    public static func detectInstalledEditors() -> [EditorTarget] {
         var seen: Set<String> = []
         var result: [EditorTarget] = []
         for editor in knownEditors {
             guard !seen.contains(editor.bundleID) else { continue }
-            let found = editor.appNames.contains { appName in
-                fm.fileExists(atPath: "/Applications/\(appName).app")
-            }
-            if found {
+            if isEditorInstalled(editor) {
                 seen.insert(editor.bundleID)
                 result.append(EditorTarget(name: editor.name, bundleID: editor.bundleID))
             }
