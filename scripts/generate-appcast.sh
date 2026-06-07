@@ -2,7 +2,8 @@
 #
 # generate-appcast.sh — emit a Sparkle appcast.xml for a built Haunts DMG.
 #
-# Reads the DMG, runs Sparkle's sign_update (EdDSA, Haunts keychain account) to
+# Reads the DMG, runs Sparkle's sign_update (EdDSA, Sparkle's DEFAULT keychain
+# account = the SHARED key whose public half is SUPublicEDKey in Info.plist) to
 # produce the signature + length, and writes a single-item appcast referencing
 # the GitHub Release download URL. Version comes from the bundle Info.plist
 # (the single source of truth the release pipeline, bead ge2, bumps).
@@ -20,7 +21,13 @@
 #                               the GitHub release. The LOCAL self-update test
 #                               sets this to its http://localhost:PORT server.
 #   APPCAST_OUT               — output path; default = <dmg dir>/appcast.xml
-#   SPARKLE_ACCOUNT           — keychain account for the signing key (default haunts)
+#   SPARKLE_ACCOUNT           — keychain account for the signing key. DEFAULT IS
+#                               EMPTY = Sparkle's default account, the SHARED key
+#                               (flowcus-v2 + lpx-explorer) whose PUBLIC half is
+#                               SUPublicEDKey in packaging/Info.plist. DO NOT set
+#                               this to "haunts": that abandoned key does NOT match
+#                               the shipped SUPublicEDKey, so updates signed with it
+#                               fail signature verification on every user's Mac.
 #
 # Refs: bead z-for-finder-7hr
 set -euo pipefail
