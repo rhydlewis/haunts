@@ -128,8 +128,19 @@ public final class AppState: ObservableObject {
     }
 
     /// Record a live navigation visit and re-blend immediately (used by FinderTracker).
+    /// This is PASSIVE observation, gated upstream by "Learn from navigation".
     public func trackNavigation(path: URL) {
-        store.record(path: path)
+        store.record(path: path, origin: .nav)
+        reblend()
+    }
+
+    /// Record an explicit JUMP — the user opened this folder from the palette — and
+    /// re-blend so it ranks higher immediately (and persists for the next rebuild).
+    /// Unlike `trackNavigation`, this is a DIRECT action: it ALWAYS learns,
+    /// independent of the "Learn from navigation" toggle, and is tagged `.jump` so
+    /// usage stats can count it separately from passive navigation.
+    public func recordJump(path: URL) {
+        store.record(path: path, origin: .jump)
         reblend()
     }
     private func reblend() {
@@ -273,6 +284,9 @@ public final class AppState: ObservableObject {
 
     // MARK: open
     private func open(_ path: String, _ mode: OpenMode) {
+        // Persist the explicit jump first (a fast local append) so the user's
+        // strongest frecency signal is captured even if the launch below is slow.
+        recordJump(path: URL(fileURLWithPath: path))
         switch mode {
         case .finder:
             NSWorkspace.shared.open(URL(fileURLWithPath: path))
