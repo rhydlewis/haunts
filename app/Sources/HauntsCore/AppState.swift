@@ -153,6 +153,23 @@ public final class AppState: ObservableObject {
     /// the disk — used after a Preferences change.
     public func applyRankingSettings() { reblend() }
 
+    /// Pure usage aggregation for the Preferences → Usage tab: explicit jumps since
+    /// install + the top-10 jumped locations. Reads the store live; the install date
+    /// is `Settings.firstLaunchDate`, falling back to the store file's creation date
+    /// (and finally `now`) so pre-`firstLaunchDate` installs still get a sensible
+    /// "since" date. Counts `.jump` records only — never passive nav or imported scores.
+    public func usageStats(now: Date = Date()) -> UsageStats {
+        UsageStats.make(records: store.load(), installDate: resolvedInstallDate(now: now), now: now)
+    }
+
+    private func resolvedInstallDate(now: Date) -> Date {
+        if let stamped = Settings.firstLaunchDate { return stamped }
+        if let created = (try? FileManager.default.attributesOfItem(atPath: store.fileURL.path)[.creationDate]) as? Date {
+            return created
+        }
+        return now
+    }
+
     /// Forget every recorded visit, then re-blend so the change is immediate.
     /// Backs "Reset Learned Data…" in Preferences.
     public func resetLearnedData() {
