@@ -7,14 +7,15 @@ on day one, before it has watched you do anything.
 
 Most "smart" launchers start cold and take weeks to learn your habits. Haunts seeds
 its ranking on first run from signals that already exist on your machine — your git
-repos, shell history, IDE recent-projects, and Spotlight metadata — and blends them
-so the folders you actually work in surface immediately.
+repos, shell history, IDE recent-projects, your `zoxide`/`z`/`autojump` history, and
+Spotlight metadata — and blends them so the folders you actually work in surface
+immediately.
 
 ## Features
 
 - **Zero cold-start.** The day-one index is built from git repos + shell history
-  (fish/zsh) + IDE recents (Zed, Xcode, PyCharm) + Spotlight usage, with no prior
-  observation required.
+  (fish/zsh/bash) + your jump database (`zoxide`/`z`/`autojump`) + IDE recents
+  (Zed, Xcode, PyCharm) + Spotlight usage, with no prior observation required.
 - **Cross-source ranking.** Each signal source is normalized independently (so one
   high-volume source can't dominate) and folders that several sources agree on get a
   small confidence boost.
@@ -77,7 +78,7 @@ A Swift package (`app/`) split so the ranking logic stays pure and unit-testable
 | Target | Role |
 | --- | --- |
 | `ZFFEngine` | Pure ranking/scoring — no AppKit, SwiftUI, or I/O. `WarmSeed`, `Frecency`, `Ranker`, `Scoring`, `Store`, `Rollup`. |
-| `HauntsAdapters` | Signal sources: editor recents + shell-history parsing. Foundation-only, never-throw. |
+| `HauntsAdapters` | Signal sources: editor recents, shell-history, and jump-database (`zoxide`/`z`/`autojump`) parsing. Foundation-only, never-throw. |
 | `HauntsCore` | `AppState` (index assembly), `Settings`, live `FinderTracker`. Testable without the executable. |
 | `zforfinder` | App shell: `AppDelegate`, the SwiftUI palette, the floating panel, and the global hotkey. |
 
