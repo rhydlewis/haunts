@@ -73,6 +73,9 @@ latest.build = Number.isNaN(Number(BUILD)) ? BUILD : Number(BUILD);
 latest.filename = filename;
 latest.publishedAt = PUBLISHED_AT;
 latest.released = true;
+// Point at this version's changelog anchor (the `anchor` filter slugifies
+// dots to dashes, e.g. 0.1.2 -> #0-1-2), so the link never drifts behind.
+latest.changeLogUrl = `/changelog/#${VERSION.replace(/\./g, "-")}`;
 writeFileSync(latestPath, JSON.stringify(latest, null, 2) + "\n");
 console.log(`✓ latest.json → v${VERSION} (build ${BUILD}), released:true`);
 
