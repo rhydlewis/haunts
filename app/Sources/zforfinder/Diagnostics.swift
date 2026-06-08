@@ -47,6 +47,23 @@ enum Diagnostics {
         }
     }
 
+    /// Unregister this bundle's login item (the `--unregister-login` flag). Idempotent.
+    static func unregisterLogin() {
+        guard #available(macOS 13.0, *) else {
+            print("unregister-login = SKIPPED (needs macOS 13+)")
+            return
+        }
+        let svc = SMAppService.mainApp
+        print("SMAppService.status (before) = \(describe(svc.status))")
+        do {
+            try svc.unregister()
+            print("SMAppService.unregister() = OK")
+        } catch {
+            print("SMAppService.unregister() = FAILED: \(error.localizedDescription)")
+        }
+        print("SMAppService.status (after)  = \(describe(svc.status))")
+    }
+
     @available(macOS 13.0, *)
     private static func describe(_ s: SMAppService.Status) -> String {
         switch s {

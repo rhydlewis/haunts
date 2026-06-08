@@ -13,6 +13,15 @@ if CommandLine.arguments.contains("--diagnostics") {
     exit(0)
 }
 
+// Headless cleanup: unregister the SMAppService login item for this bundle id.
+// Useful after testing the first-run prompt from a debug build, which registers
+// a real login item under the shared `app.gethaunts.Haunts` identity. Exits
+// without app.run().
+if CommandLine.arguments.contains("--unregister-login") {
+    Diagnostics.unregisterLogin()
+    exit(0)
+}
+
 let app = NSApplication.shared
 app.setActivationPolicy(.accessory)
 let delegate = AppDelegate()

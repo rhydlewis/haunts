@@ -81,12 +81,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // launch, and honors the Settings ▸ General opt-out.
         Analytics.reportLaunch()
 
+        // First-run prompt: ask once whether to open Haunts at login (bead 2iw).
+        // Deferred to the next runloop tick so the menu-bar item is in place
+        // before the modal alert steals focus.
+        DispatchQueue.main.async { [weak self] in self?.maybePromptLaunchAtLogin() }
+
         // Live Finder-navigation tracking — start only if the user opted in; the
         // Ranking tab's toggle posts .zffToggleLearnFromNavigation when it flips.
         syncNavigationTracking()
         NotificationCenter.default.addObserver(forName: .zffToggleLearnFromNavigation, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.syncNavigationTracking() }
         }
+    }
+
+    /// Show the one-time "Open Haunts at login?" prompt on the very first launch
+    /// (bead 2iw). Gated on `Settings.hasSeenLaunchPrompt`, which is flipped true
+    /// as soon as the prompt is shown so it never reappears on subsequent launches.
+    /// The user's choice writes `Settings.launchAtLogin` and drives the real
+    /// `SMAppService` registration via `LaunchAtLogin.set`.
+    @MainActor private func maybePromptLaunchAtLogin() {
+        guard !Settings.hasSeenLaunchPrompt else { return }
+        Settings.hasSeenLaunchPrompt = true
+
+        let alert = NSAlert()
+        alert.messageText = "Open Haunts automatically at login?"
+        alert.informativeText = "Haunts lives in the menu bar and stays ready for "
+            + HotKeyUtils.displayString(keyCode: Settings.hotkeyKeyCode,
+                                        carbonModifiers: Settings.hotkeyModifiers)
+            + ". You can change this any time in Settings."
+        alert.addButton(withTitle: "Enable")    // default (return)
+        alert.addButton(withTitle: "Not Now")
+
+        let enable = alert.runModal() == .alertFirstButtonReturn
+        Settings.launchAtLogin = enable
+        LaunchAtLogin.set(enable)
+        NSLog("Haunts: first-run launch-at-login prompt -> \(enable ? "Enable" : "Not Now")")
     }
 
     /// Start or stop the FinderTracker to match the persisted Learn-from-navigation

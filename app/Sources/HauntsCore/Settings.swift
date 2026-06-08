@@ -123,6 +123,14 @@ public struct Settings {
         set { UserDefaults.standard.set(newValue, forKey: "haunts.launchAtLogin") }
     }
 
+    /// One-shot gate for the first-run "Open at login?" prompt. Flipped true the
+    /// first time the prompt is shown so it never reappears (bead 2iw). Default
+    /// false for a fresh install.
+    public static var hasSeenLaunchPrompt: Bool {
+        get { UserDefaults.standard.bool(forKey: "haunts.hasSeenLaunchPrompt") }
+        set { UserDefaults.standard.set(newValue, forKey: "haunts.hasSeenLaunchPrompt") }
+    }
+
     // MARK: Refresh interval
 
     /// Index refresh interval in minutes. 0 means "Manually". Default 15.

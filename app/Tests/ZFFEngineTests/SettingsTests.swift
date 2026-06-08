@@ -188,6 +188,18 @@ struct Session4SettingsTests {
         clearKeys()
     }
 
+    @Test func hasSeenLaunchPromptDefaultsFalse() {
+        UserDefaults.standard.removeObject(forKey: "haunts.hasSeenLaunchPrompt")
+        #expect(Settings.hasSeenLaunchPrompt == false)
+    }
+
+    @Test func hasSeenLaunchPromptRoundTrips() {
+        UserDefaults.standard.removeObject(forKey: "haunts.hasSeenLaunchPrompt")
+        Settings.hasSeenLaunchPrompt = true
+        #expect(Settings.hasSeenLaunchPrompt == true)
+        UserDefaults.standard.removeObject(forKey: "haunts.hasSeenLaunchPrompt")
+    }
+
     @Test func refreshIntervalDefaultsTo15() {
         clearKeys()
         #expect(Settings.refreshIntervalMinutes == 15)
