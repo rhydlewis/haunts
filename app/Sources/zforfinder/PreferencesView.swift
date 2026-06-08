@@ -67,10 +67,6 @@ final class PreferencesModel: ObservableObject {
     @Published var terminalTarget: String { didSet { Settings.terminalTarget = terminalTarget } }
     @Published var installedTerminals: [String]
 
-    // Usage — a snapshot of the pure aggregation, refreshed when the tab appears.
-    // The tab is a passive renderer; nothing here computes stats itself.
-    @Published var usageStats: UsageStats?
-
     private var recordMonitor: Any?
 
     init(appState: AppState?) {
@@ -92,10 +88,11 @@ final class PreferencesModel: ObservableObject {
 
     // MARK: Usage
 
-    /// Pull a fresh snapshot from the store. Called when the Usage tab appears so
-    /// the numbers reflect jumps made since the window opened.
-    func refreshUsageStats() {
-        usageStats = appState?.usageStats()
+    /// A fresh usage snapshot computed against `now`. The Usage tab drives this off
+    /// a `TimelineView` so relative times tick and counts stay current while the tab
+    /// is visible — `.onAppear` alone doesn't re-fire on TabView tab switches.
+    func usageSnapshot(now: Date) -> UsageStats? {
+        appState?.usageStats(now: now)
     }
 
     // MARK: Hotkey recording

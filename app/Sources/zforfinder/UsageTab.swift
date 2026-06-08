@@ -5,31 +5,36 @@ import ZFFEngine
 
 // MARK: - Usage
 
-/// Preferences → Usage. A passive renderer over `model.usageStats` (the pure
-/// `UsageStats` aggregation): one warm headline stat, a ranked top-10, and a
-/// graceful empty state. Restraint is the brief — a settings pane, not a
-/// dashboard: ember appears exactly once when populated (the big total).
+/// Preferences → Usage. Renders the pure `UsageStats` aggregation (pulled fresh
+/// per `TimelineView` tick via `model.usageSnapshot(now:)`): one warm headline
+/// stat, a ranked top-10, and a graceful empty state. Restraint is the brief — a
+/// settings pane, not a dashboard: ember appears exactly once when populated (the
+/// big total).
 struct UsageTab: View {
     @ObservedObject var model: PreferencesModel
 
     var body: some View {
-        Group {
-            if let stats = model.usageStats, !stats.isEmpty {
-                populated(stats)
+        // Re-render on a 60s cadence (and whenever the tab becomes visible again)
+        // so relative "X ago" times tick and counts stay fresh. A one-shot
+        // `.onAppear` isn't enough: SwiftUI TabView keeps the child view alive and
+        // doesn't re-fire it on tab switches, which froze the times until relaunch.
+        TimelineView(.periodic(from: .now, by: 60)) { context in
+            let now = context.date
+            if let stats = model.usageSnapshot(now: now), !stats.isEmpty {
+                populated(stats, now: now)
             } else {
                 EmptyUsageState(hotkey: model.hotkeyDisplay)
             }
         }
-        .onAppear { model.refreshUsageStats() }
     }
 
     // MARK: Populated
 
-    private func populated(_ stats: UsageStats) -> some View {
+    private func populated(_ stats: UsageStats, now: Date) -> some View {
         Form {
             Section {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(stats.leadText(now: Date()))
+                    Text(stats.leadText(now: now))
                         .font(.callout)
                         .foregroundStyle(.secondary)
                     Text(stats.countText())
@@ -47,7 +52,7 @@ struct UsageTab: View {
             Section {
                 let rows = Array(stats.topLocations.enumerated())
                 ForEach(rows, id: \.element.id) { idx, row in
-                    UsageRowView(rank: idx + 1, row: row, showDate: stats.hasAnyDate)
+                    UsageRowView(rank: idx + 1, row: row, showDate: stats.hasAnyDate, now: now)
                 }
             } header: {
                 Text("Your top haunts")
@@ -71,6 +76,7 @@ private struct UsageRowView: View {
     let rank: Int
     let row: UsageStats.Row
     let showDate: Bool
+    let now: Date
 
     var body: some View {
         HStack(spacing: 12) {
@@ -99,11 +105,12 @@ private struct UsageRowView: View {
         }
     }
 
-    /// Abbreviated relative date ("2h ago"); blank when this row has no date but
+    /// Abbreviated relative date ("2h ago"), measured against the timeline's `now`
+    /// so it advances without an app relaunch; blank when this row has no date but
     /// the column is shown because a sibling does.
     private func relativeDate(_ date: Date?) -> String {
         guard let date else { return "" }
-        return UsageRowView.relativeFormatter.localizedString(for: date, relativeTo: Date())
+        return UsageRowView.relativeFormatter.localizedString(for: date, relativeTo: now)
     }
 
     private static let relativeFormatter: RelativeDateTimeFormatter = {
