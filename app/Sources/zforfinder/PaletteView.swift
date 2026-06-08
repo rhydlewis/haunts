@@ -12,7 +12,7 @@ struct PaletteView: View {
             HStack(spacing: 12) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(.orange.opacity(0.9))
+                    .foregroundStyle(Color.ember)
                 TextField("jump to…", text: $state.query)
                     .textFieldStyle(.plain)
                     .font(.system(size: 22, weight: .light, design: .rounded))
@@ -64,7 +64,7 @@ struct PaletteView: View {
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
-            .strokeBorder(.white.opacity(0.10), lineWidth: 1))
+            .strokeBorder(.primary.opacity(0.12), lineWidth: 1))   // adaptive rim (dark→light, light→dark)
         .onAppear { focused = true }
         .onChange(of: state.focusPing) { _, _ in focused = true }
         .onChange(of: state.query) { _, _ in state.selection = 0 }
@@ -73,7 +73,7 @@ struct PaletteView: View {
     private func hint(_ key: String, _ label: String) -> some View {
         HStack(spacing: 5) {
             Text(key).padding(.horizontal, 5).padding(.vertical, 1)
-                .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 4))
+                .background(.quaternary, in: RoundedRectangle(cornerRadius: 4))
             Text(label)
         }
     }
@@ -82,13 +82,21 @@ struct PaletteView: View {
 private struct Row: View {
     let place: Place
     let selected: Bool
+    @Environment(\.colorScheme) private var scheme
+
+    // Brand orange/teal read well on the dark material; on the light (and
+    // wallpaper-tinted, translucent) material they wash out, so fall back to the
+    // vibrancy-aware system label colors that stay legible on any background.
+    private var scoreColor: Color { scheme == .dark ? .ember : Color(nsColor: .secondaryLabelColor) }
+    private var repoColor: Color { scheme == .dark ? .teal : Color(nsColor: .labelColor) }
+    private var repoFill: Color { scheme == .dark ? .teal.opacity(0.12) : Color.primary.opacity(0.07) }
 
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: place.isRepo ? "arrow.triangle.branch" : "folder")
                 .font(.system(size: 14))
                 .frame(width: 30, height: 30)
-                .background(selected ? AnyShapeStyle(.orange) : AnyShapeStyle(.white.opacity(0.06)),
+                .background(selected ? AnyShapeStyle(Color.ember) : AnyShapeStyle(.quaternary),
                             in: RoundedRectangle(cornerRadius: 7))
                 .foregroundStyle(selected ? AnyShapeStyle(.black) : AnyShapeStyle(.primary))
 
@@ -100,16 +108,16 @@ private struct Row: View {
             Spacer()
             if place.isRepo {
                 Text("repo").font(.system(size: 9, design: .monospaced))
-                    .foregroundStyle(.teal)
+                    .foregroundStyle(repoColor)
                     .padding(.horizontal, 6).padding(.vertical, 2)
-                    .background(.teal.opacity(0.12), in: RoundedRectangle(cornerRadius: 5))
+                    .background(repoFill, in: RoundedRectangle(cornerRadius: 5))
             }
             Text(String(format: "%.1f", place.score))
                 .font(.system(size: 11, design: .monospaced))
-                .foregroundStyle(.orange.opacity(0.8))
+                .foregroundStyle(scoreColor)
         }
         .padding(.horizontal, 12).padding(.vertical, 8)
-        .background(selected ? AnyShapeStyle(.orange.opacity(0.16)) : AnyShapeStyle(.clear),
+        .background(selected ? AnyShapeStyle(Color.ember.opacity(0.18)) : AnyShapeStyle(.clear),
                     in: RoundedRectangle(cornerRadius: 10))
     }
 }
