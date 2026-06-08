@@ -56,6 +56,22 @@ struct NavigationFilterTests {
     @Test func skipsUserLibrary() {
         // ~/Library has a "Library" component too — both should be skipped.
         #expect(!NavigationFilter.shouldRecord("/Users/rhyd/Library/Application Support"))
+        #expect(!NavigationFilter.shouldRecord("/Users/rhyd/Library"))
+    }
+
+    @Test func recordsICloudMobileDocuments() {
+        // iCloud lives under ~/Library/Mobile Documents — real working folders, not
+        // system noise. The blanket Library exclusion carves out Mobile Documents.
+        #expect(NavigationFilter.shouldRecord(
+            "/Users/rhyd/Library/Mobile Documents/iCloud~md~obsidian/Documents/notes"))
+        #expect(NavigationFilter.shouldRecord(
+            "/Users/rhyd/Library/Mobile Documents/com~apple~CloudDocs/project"))
+    }
+
+    @Test func stillSkipsNonICloudLibrarySubfolders() {
+        // "Mobile Documents" only escapes the filter when it directly follows
+        // "Library"; a Library component followed by anything else stays excluded.
+        #expect(!NavigationFilter.shouldRecord("/Users/rhyd/Library/Caches/Mobile Documents"))
     }
 
     @Test func skipsDotfileComponents() {

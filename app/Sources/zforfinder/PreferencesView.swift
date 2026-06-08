@@ -366,7 +366,7 @@ private struct FoldersTab: View {
             } header: {
                 Text("Scan roots")
             } footer: {
-                Text("Haunts indexes git projects and folders under these locations. Ignores node_modules, Library, and hidden folders.")
+                Text("Haunts indexes git projects and folders under these locations. Ignores node_modules, system Library (except iCloud), and hidden folders.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }

@@ -204,7 +204,8 @@ public final class AppState: ObservableObject {
         let dir = isDir.boolValue ? raw : (raw as NSString).deletingLastPathComponent
         let std = (dir as NSString).standardizingPath
         guard std.hasPrefix(HOME), std != HOME else { return nil }
-        if std.contains("/Library/") || std.contains("/.") { return nil }
+        // iCloud (~/Library/Mobile Documents) is carved out of the Library exclusion.
+        if NavigationFilter.hasExcludedLibraryComponent(path: std) || std.contains("/.") { return nil }
         return std
     }
 
@@ -260,7 +261,8 @@ public final class AppState: ObservableObject {
                 for i in 0..<q.resultCount {
                     guard let it = q.result(at: i) as? NSMetadataItem,
                           let p = it.value(forAttribute: NSMetadataItemPathKey) as? String,
-                          !p.contains("/Library/"), !p.contains("/.") else { continue }
+                          // iCloud (~/Library/Mobile Documents) is carved out of the Library exclusion.
+                          !NavigationFilter.hasExcludedLibraryComponent(path: p), !p.contains("/.") else { continue }
                     let dir = (p as NSString).deletingLastPathComponent
                     if dir.isEmpty || dir == HOME { continue }
                     let last = it.value(forAttribute: "kMDItemLastUsedDate") as? Date
